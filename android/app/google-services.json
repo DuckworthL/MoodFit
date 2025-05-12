@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "68824927308",
+    "project_id": "moodfit-bd9f2",
+    "storage_bucket": "moodfit-bd9f2.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:68824927308:android:298c8aee1f1ae949ad38e9",
+        "android_client_info": {
+          "package_name": "com.example.moodfit"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAHbRRG7WfYsMOAu3ymTIHFnWkRiCqLWT4"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

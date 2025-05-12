@@ -1,0 +1,47 @@
+name: moodfit
+description: Personalized workout routines based on mood and energy levels
+publish_to: "none"
+version: 1.0.0+1
+
+environment:
+  sdk: ">=3.0.6 <4.0.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  cupertino_icons: ^1.0.2
+  firebase_core: ^2.15.0
+  firebase_auth: ^4.7.2
+  cloud_firestore: ^4.8.4
+  provider: ^6.0.5
+  shared_preferences: ^2.2.0
+  fl_chart: ^0.63.0
+  intl: ^0.18.1
+  flutter_local_notifications: ^15.1.0+1
+  google_fonts: ^5.1.0
+  flutter_svg: ^2.0.7
+  lottie: ^2.6.0
+  cached_network_image: ^3.2.3
+  table_calendar: ^3.0.9
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^2.0.2
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/backgrounds/
+    - assets/icons/
+    - assets/images/
+  fonts:
+    - family: Poppins
+      fonts:
+        - asset: assets/fonts/Poppins-Regular.ttf
+        - asset: assets/fonts/Poppins-Light.ttf
+          weight: 300
+        - asset: assets/fonts/Poppins-Medium.ttf
+          weight: 500
+        - asset: assets/fonts/Poppins-Bold.ttf
+          weight: 700
