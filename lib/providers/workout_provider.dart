@@ -1,4 +1,3 @@
-// lib/providers/workout_provider.dart - Workout state management
 import 'package:flutter/foundation.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:moodfit/models/mood_model.dart';
@@ -261,7 +260,9 @@ class WorkoutProvider extends ChangeNotifier {
       // Calculate total duration
       int totalDurationMinutes = exercises.fold(
           // ignore: avoid_types_as_parameter_names
-          0, (sum, exercise) => sum + (exercise.durationSeconds ~/ 60));
+          0,
+          // ignore: avoid_types_as_parameter_names
+          (sum, exercise) => sum + (exercise.durationSeconds ~/ 60));
       if (totalDurationMinutes == 0 && exercises.isNotEmpty) {
         totalDurationMinutes = 1; // Minimum 1 minute
       }
@@ -326,7 +327,9 @@ class WorkoutProvider extends ChangeNotifier {
       // Calculate total duration
       int totalDurationMinutes = exercises.fold(
           // ignore: avoid_types_as_parameter_names
-          0, (sum, exercise) => sum + (exercise.durationSeconds ~/ 60));
+          0,
+          // ignore: avoid_types_as_parameter_names
+          (sum, exercise) => sum + (exercise.durationSeconds ~/ 60));
       if (totalDurationMinutes == 0 && exercises.isNotEmpty) {
         totalDurationMinutes = 1; // Minimum 1 minute
       }
@@ -382,8 +385,9 @@ class WorkoutProvider extends ChangeNotifier {
     }
   }
 
-  // Fixed delete workout method with only one parameter
-  Future<bool> deleteWorkout(String workoutId, String s) async {
+  // Updated deleteWorkout method that returns a Map with success status and message
+  Future<Map<String, dynamic>> deleteWorkout(
+      String workoutId, String workoutName) async {
     try {
       _isLoading = true;
       _error = null;
@@ -395,7 +399,7 @@ class WorkoutProvider extends ChangeNotifier {
         _isLoading = false;
         _error = 'User not authenticated';
         notifyListeners();
-        return false;
+        return {'success': false, 'message': 'User not authenticated'};
       }
 
       // Get the workout document
@@ -406,7 +410,7 @@ class WorkoutProvider extends ChangeNotifier {
         _isLoading = false;
         _error = 'Workout not found';
         notifyListeners();
-        return false;
+        return {'success': false, 'message': 'Workout not found'};
       }
 
       Map<String, dynamic> data = workoutDoc.data() as Map<String, dynamic>;
@@ -416,7 +420,10 @@ class WorkoutProvider extends ChangeNotifier {
         _isLoading = false;
         _error = 'You can only delete workouts you created';
         notifyListeners();
-        return false;
+        return {
+          'success': false,
+          'message': 'You can only delete workouts you created'
+        };
       }
 
       // Delete from Firestore
@@ -433,12 +440,18 @@ class WorkoutProvider extends ChangeNotifier {
 
       _isLoading = false;
       notifyListeners();
-      return true;
+      return {
+        'success': true,
+        'message': '"$workoutName" has been deleted successfully'
+      };
     } catch (e) {
       _isLoading = false;
       _error = e.toString();
       notifyListeners();
-      return false;
+      return {
+        'success': false,
+        'message': 'Error deleting workout: ${e.toString()}'
+      };
     }
   }
 

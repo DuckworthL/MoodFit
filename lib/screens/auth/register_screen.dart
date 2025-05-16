@@ -1,9 +1,10 @@
-// lib/screens/auth/register_screen.dart - User registration functionality
 import 'package:flutter/material.dart';
 import 'package:moodfit/providers/auth_provider.dart';
 import 'package:moodfit/screens/main/mood_selection_screen.dart';
 import 'package:moodfit/utils/signup_handler.dart';
 import 'package:provider/provider.dart';
+
+import '../../toast_util.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -33,6 +34,16 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   Future<void> _handleRegister() async {
     if (_formKey.currentState!.validate() && _acceptTerms) {
+      // Show confirmation dialog before registering
+      final confirmed = await ToastUtil.showConfirmationDialog(
+        context: context,
+        title: 'Create Account',
+        message: 'Are you sure you want to create a new account?',
+        confirmText: 'Create Account',
+      );
+
+      if (!confirmed) return;
+
       // Mark signup as active BEFORE Firebase authentication
       await SignupHandler.markSignupActive();
       debugPrint("RegisterScreen: Marked signup as active");
@@ -46,6 +57,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
       );
 
       if (result && mounted) {
+        // Show success toast
+        ToastUtil.showSuccessToast('Account created successfully');
+
         // Add debug print
         debugPrint(
             "RegisterScreen: Registration successful, navigating to mood selection with isInitialSetup=true");
@@ -60,21 +74,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
         // Clear signup flag if registration failed
         await SignupHandler.clearSignupActive();
 
-        // Show error message if sign-up failed
-        // ignore: use_build_context_synchronously
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(authProvider.error ?? 'Registration failed'),
-            backgroundColor: Colors.red,
-          ),
-        );
+        // Show error toast if sign-up failed
+        ToastUtil.showErrorToast(authProvider.error ?? 'Registration failed');
       }
-    } else if (!_acceptTerms) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Please accept the terms and conditions'),
-        ),
-      );
+    } else if (!_acceptTerms && mounted) {
+      ToastUtil.showErrorToast('Please accept the terms and conditions');
     }
   }
 

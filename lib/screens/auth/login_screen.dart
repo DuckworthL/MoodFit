@@ -1,9 +1,10 @@
-// lib/screens/auth/login_screen.dart - User login functionality
 import 'package:flutter/material.dart';
 import 'package:moodfit/providers/auth_provider.dart';
 import 'package:moodfit/screens/auth/register_screen.dart';
 import 'package:moodfit/screens/main/dashboard_screen.dart';
 import 'package:provider/provider.dart';
+
+import '../../toast_util.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -28,16 +29,35 @@ class _LoginScreenState extends State<LoginScreen> {
 
   Future<void> _handleLogin() async {
     if (_formKey.currentState!.validate()) {
+      // Show confirmation dialog before login
+      final confirmed = await ToastUtil.showConfirmationDialog(
+          context: context,
+          title: 'Sign In',
+          message: 'Do you want to sign in with these credentials?',
+          confirmText: 'Sign In');
+
+      if (!confirmed) return;
+
+      // ignore: use_build_context_synchronously
       final authProvider = Provider.of<AuthProvider>(context, listen: false);
+
+      // Show loading indicator
+      setState(() {
+        // You may want to add a loading state here
+      });
+
       final result = await authProvider.signIn(
         _emailController.text.trim(),
         _passwordController.text.trim(),
       );
 
       if (result && mounted) {
+        ToastUtil.showSuccessToast('Login successful');
         Navigator.of(context).pushReplacement(
           MaterialPageRoute(builder: (context) => const DashboardScreen()),
         );
+      } else if (mounted && authProvider.error != null) {
+        ToastUtil.showErrorToast(authProvider.error!);
       }
     }
   }
@@ -212,16 +232,6 @@ class _LoginScreenState extends State<LoginScreen> {
                                 child: const Text('Create Account'),
                               ),
                             ],
-                          ),
-                          const SizedBox(height: 8),
-                          // Demo Account Login Button
-                          TextButton(
-                            onPressed: () {
-                              _emailController.text = 'demo@moodfit.com';
-                              _passwordController.text = 'MoodFit2025';
-                              _handleLogin();
-                            },
-                            child: const Text('Use Demo Account'),
                           ),
                         ],
                       ),

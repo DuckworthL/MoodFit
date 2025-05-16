@@ -1,4 +1,3 @@
-// lib/screens/main/mood_selection_screen.dart - Mood selection for workout recommendations
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:moodfit/models/mood_model.dart';
@@ -9,6 +8,8 @@ import 'package:moodfit/screens/main/dashboard_screen.dart';
 import 'package:moodfit/screens/main/mood_history_screen.dart';
 import 'package:moodfit/utils/constants.dart';
 import 'package:provider/provider.dart';
+
+import '../../toast_util.dart';
 
 class MoodSelectionScreen extends StatefulWidget {
   final bool isInitialSetup;
@@ -29,7 +30,8 @@ class _MoodSelectionScreenState extends State<MoodSelectionScreen> {
   @override
   void initState() {
     super.initState();
-    debugPrint("MoodSelectionScreen initialized with isInitialSetup: ${widget.isInitialSetup}");
+    debugPrint(
+        "MoodSelectionScreen initialized with isInitialSetup: ${widget.isInitialSetup}");
   }
 
   @override
@@ -40,22 +42,30 @@ class _MoodSelectionScreenState extends State<MoodSelectionScreen> {
 
   Future<void> _saveNewMood() async {
     if (_selectedMoodType == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Please select a mood'),
-          backgroundColor: Colors.red,
-        ),
-      );
+      ToastUtil.showErrorToast('Please select a mood');
       return;
     }
+
+    // Show confirmation dialog before saving
+    final confirmed = await ToastUtil.showConfirmationDialog(
+      context: context,
+      title: 'Save Mood',
+      message: 'Do you want to save your current mood?',
+      confirmText: 'Save',
+    );
+
+    if (!confirmed) return;
 
     setState(() {
       _isSubmitting = true;
     });
 
+    // ignore: use_build_context_synchronously
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    // ignore: use_build_context_synchronously
     final moodProvider = Provider.of<MoodProvider>(context, listen: false);
     final workoutProvider =
+        // ignore: use_build_context_synchronously
         Provider.of<WorkoutProvider>(context, listen: false);
 
     bool success = false;
@@ -79,9 +89,16 @@ class _MoodSelectionScreenState extends State<MoodSelectionScreen> {
           // Reset the new user flag after completing onboarding
           authProvider.resetNewUserFlag();
         }
+
+        if (success && mounted) {
+          ToastUtil.showSuccessToast('Mood saved successfully');
+        }
       } catch (e) {
         if (kDebugMode) {
           print('Error saving mood: $e');
+        }
+        if (mounted) {
+          ToastUtil.showErrorToast('Error saving mood: $e');
         }
       }
 
@@ -93,7 +110,8 @@ class _MoodSelectionScreenState extends State<MoodSelectionScreen> {
         if (success) {
           // Different navigation based on whether this is initial setup
           if (widget.isInitialSetup) {
-            debugPrint("MoodSelectionScreen: Initial setup complete, navigating to dashboard");
+            debugPrint(
+                "MoodSelectionScreen: Initial setup complete, navigating to dashboard");
             Navigator.of(context).pushAndRemoveUntil(
               MaterialPageRoute(builder: (context) => const DashboardScreen()),
               (route) => false, // Remove all routes from stack
@@ -110,12 +128,7 @@ class _MoodSelectionScreenState extends State<MoodSelectionScreen> {
       });
 
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('User not authenticated'),
-            backgroundColor: Colors.red,
-          ),
-        );
+        ToastUtil.showErrorToast('User not authenticated');
       }
     }
   }
@@ -166,7 +179,7 @@ class _MoodSelectionScreenState extends State<MoodSelectionScreen> {
                 ),
               ),
               const SizedBox(height: 20),
-                            GridView.count(
+              GridView.count(
                 crossAxisCount: 2,
                 shrinkWrap: true,
                 physics: const NeverScrollableScrollPhysics(),

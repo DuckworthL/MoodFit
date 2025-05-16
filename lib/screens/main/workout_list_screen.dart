@@ -1,10 +1,11 @@
-// lib/screens/main/workout_list_screen.dart - View and manage user workouts
 import 'package:flutter/material.dart';
 import 'package:moodfit/models/workout_model.dart';
 import 'package:moodfit/providers/workout_provider.dart';
 import 'package:moodfit/screens/main/create_workout_screen.dart';
 import 'package:moodfit/screens/main/workout_detail_screen.dart';
 import 'package:provider/provider.dart';
+
+import '../../toast_util.dart';
 
 class WorkoutListScreen extends StatefulWidget {
   const WorkoutListScreen({Key? key}) : super(key: key);
@@ -32,9 +33,7 @@ class _WorkoutListScreenState extends State<WorkoutListScreen> {
           .loadUserWorkouts();
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error loading workouts: $e')),
-        );
+        ToastUtil.showErrorToast('Error loading workouts: $e');
       }
     } finally {
       if (mounted) {
@@ -45,53 +44,34 @@ class _WorkoutListScreenState extends State<WorkoutListScreen> {
     }
   }
 
-  void _confirmDeleteWorkout(WorkoutModel workout) {
-    showDialog(
+  void _confirmDeleteWorkout(WorkoutModel workout) async {
+    final confirmed = await ToastUtil.showConfirmationDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Delete Workout'),
-        content: Text('Are you sure you want to delete "${workout.name}"?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            style: TextButton.styleFrom(foregroundColor: Colors.red),
-            onPressed: () async {
-              Navigator.pop(context);
-
-              try {
-                final success =
-                    await Provider.of<WorkoutProvider>(context, listen: false)
-                        .deleteWorkout(workout.id, workout.name);
-
-                if (mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text(success
-                          ? 'Workout deleted successfully'
-                          : 'Failed to delete workout'),
-                      backgroundColor: success ? Colors.green : Colors.red,
-                    ),
-                  );
-                }
-              } catch (e) {
-                if (mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text('Error deleting workout: $e'),
-                      backgroundColor: Colors.red,
-                    ),
-                  );
-                }
-              }
-            },
-            child: const Text('Delete'),
-          ),
-        ],
-      ),
+      title: 'Delete Workout',
+      message: 'Are you sure you want to delete "${workout.name}"?',
+      confirmText: 'Delete',
+      isDestructive: true,
     );
+
+    if (!confirmed) return;
+
+    try {
+      // ignore: use_build_context_synchronously
+      final result = await Provider.of<WorkoutProvider>(context, listen: false)
+          .deleteWorkout(workout.id, workout.name);
+
+      if (mounted) {
+        if (result['success']) {
+          ToastUtil.showSuccessToast(result['message']);
+        } else {
+          ToastUtil.showErrorToast(result['message']);
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ToastUtil.showErrorToast('Error deleting workout: $e');
+      }
+    }
   }
 
   void _navigateToCreateWorkout() {
@@ -180,31 +160,25 @@ class _WorkoutListScreenState extends State<WorkoutListScreen> {
                         ),
                         direction: DismissDirection.endToStart,
                         confirmDismiss: (direction) async {
-                          bool? result = await showDialog(
+                          return await ToastUtil.showConfirmationDialog(
                             context: context,
-                            builder: (context) => AlertDialog(
-                              title: const Text('Delete Workout'),
-                              content: Text(
-                                  'Are you sure you want to delete "${workout.name}"?'),
-                              actions: [
-                                TextButton(
-                                  onPressed: () =>
-                                      Navigator.pop(context, false),
-                                  child: const Text('Cancel'),
-                                ),
-                                TextButton(
-                                  style: TextButton.styleFrom(
-                                      foregroundColor: Colors.red),
-                                  onPressed: () => Navigator.pop(context, true),
-                                  child: const Text('Delete'),
-                                ),
-                              ],
-                            ),
+                            title: 'Delete Workout',
+                            message:
+                                'Are you sure you want to delete "${workout.name}"?',
+                            confirmText: 'Delete',
+                            isDestructive: true,
                           );
-                          return result ?? false;
                         },
                         onDismissed: (direction) async {
-                          await workoutProvider.deleteWorkout(workout.id, workout.name);
+                          final result = await workoutProvider.deleteWorkout(
+                              workout.id, workout.name);
+
+                          if (result['success']) {
+                            ToastUtil.showSuccessToast(result['message']);
+                          } else {
+                            // If there's an error, we should show an error toast
+                            ToastUtil.showErrorToast(result['message']);
+                          }
                         },
                         child: Card(
                           margin: const EdgeInsets.symmetric(
@@ -226,7 +200,7 @@ class _WorkoutListScreenState extends State<WorkoutListScreen> {
                               ),
                             ),
                             subtitle: Text(
-                              '${workout.exercises.length} exercises • ${workout.durationMinutes} min',
+                              '${workout.exercises.length} exercises • ${workout.totalDurationMinutes} min',
                             ),
                             trailing: Row(
                               mainAxisSize: MainAxisSize.min,
@@ -235,17 +209,29 @@ class _WorkoutListScreenState extends State<WorkoutListScreen> {
                                   icon: const Icon(Icons.edit,
                                       color: Colors.blue),
                                   tooltip: 'Edit',
-                                  onPressed: () {
-                                    // Navigate to edit workout (reuse create screen)
-                                    Navigator.push(
-                                      context,
-                                      MaterialPageRoute(
-                                        builder: (context) =>
-                                            CreateWorkoutScreen(
-                                          editWorkout: workout,
-                                        ),
-                                      ),
+                                  onPressed: () async {
+                                    final confirmed =
+                                        await ToastUtil.showConfirmationDialog(
+                                      context: context,
+                                      title: 'Edit Workout',
+                                      message:
+                                          'Do you want to edit "${workout.name}"?',
+                                      confirmText: 'Edit',
                                     );
+
+                                    if (confirmed) {
+                                      // Navigate to edit workout (reuse create screen)
+                                      // ignore: use_build_context_synchronously
+                                      Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder: (context) =>
+                                              CreateWorkoutScreen(
+                                            editWorkout: workout,
+                                          ),
+                                        ),
+                                      );
+                                    }
                                   },
                                 ),
                                 IconButton(

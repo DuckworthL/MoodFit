@@ -1,4 +1,3 @@
-// lib/screens/main/workout_detail_screen.dart - Display workout details and start workout
 import 'package:flutter/material.dart';
 import 'package:moodfit/models/mood_model.dart';
 import 'package:moodfit/models/workout_model.dart';
@@ -8,6 +7,8 @@ import 'package:moodfit/providers/progress_provider.dart';
 import 'package:moodfit/providers/workout_provider.dart';
 import 'package:moodfit/screens/main/workout_session_screen.dart';
 import 'package:provider/provider.dart';
+
+import '../../toast_util.dart';
 
 class WorkoutDetailScreen extends StatelessWidget {
   final WorkoutModel workout;
@@ -80,40 +81,26 @@ class WorkoutDetailScreen extends StatelessWidget {
                   ],
                   onSelected: (value) async {
                     if (value == 'delete' && authProvider.uid != null) {
-                      final confirmed = await showDialog<bool>(
+                      final confirmed = await ToastUtil.showConfirmationDialog(
                         context: context,
-                        builder: (context) => AlertDialog(
-                          title: const Text('Delete Workout'),
-                          content: const Text(
-                              'Are you sure you want to delete this workout?'),
-                          actions: [
-                            TextButton(
-                              onPressed: () => Navigator.of(context).pop(false),
-                              child: const Text('Cancel'),
-                            ),
-                            ElevatedButton(
-                              onPressed: () => Navigator.of(context).pop(true),
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: Colors.red,
-                              ),
-                              child: const Text('Delete'),
-                            ),
-                          ],
-                        ),
+                        title: 'Delete Workout',
+                        message:
+                            'Are you sure you want to delete this workout?',
+                        confirmText: 'Delete',
+                        isDestructive: true,
                       );
 
-                      if (confirmed == true) {
+                      if (confirmed) {
                         final result = await workoutProvider.deleteWorkout(
                           workout.id,
-                          authProvider.uid!,
+                          workout.name,
                         );
 
-                        if (result && context.mounted) {
+                        if (result['success'] && context.mounted) {
                           Navigator.of(context).pop();
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                                content: Text('Workout deleted successfully')),
-                          );
+                          ToastUtil.showSuccessToast(result['message']);
+                        } else if (context.mounted) {
+                          ToastUtil.showErrorToast(result['message']);
                         }
                       }
                     }
@@ -345,9 +332,19 @@ class WorkoutDetailScreen extends StatelessWidget {
             width: double.infinity,
             height: 50,
             child: ElevatedButton(
-              onPressed: () {
+              onPressed: () async {
                 if (authProvider.uid != null &&
                     moodProvider.currentMood != null) {
+                  // Show confirmation dialog before starting workout
+                  final confirmed = await ToastUtil.showConfirmationDialog(
+                    context: context,
+                    title: 'Start Workout',
+                    message: 'Ready to start ${workout.name}?',
+                    confirmText: 'Start',
+                  );
+
+                  if (!confirmed) return;
+
                   // Log workout start to progress
                   progressProvider.addWorkoutProgress(
                     authProvider.uid!,
@@ -359,6 +356,7 @@ class WorkoutDetailScreen extends StatelessWidget {
                   );
 
                   // Navigate to workout session
+                  // ignore: use_build_context_synchronously
                   Navigator.push(
                     context,
                     MaterialPageRoute(
@@ -368,12 +366,8 @@ class WorkoutDetailScreen extends StatelessWidget {
                     ),
                   );
                 } else if (moodProvider.currentMood == null) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text(
-                          'Please set your current mood before starting a workout'),
-                    ),
-                  );
+                  ToastUtil.showErrorToast(
+                      'Please set your current mood before starting a workout');
 
                   // Navigate to mood selection
                   Navigator.of(context).pop();

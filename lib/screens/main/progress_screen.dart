@@ -1,4 +1,3 @@
-// lib/screens/main/progress_screen.dart - Track workout and mood progress
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:moodfit/models/mood_model.dart';
@@ -8,6 +7,8 @@ import 'package:moodfit/providers/progress_provider.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import 'package:table_calendar/table_calendar.dart';
+
+import '../../toast_util.dart';
 
 class ProgressScreen extends StatefulWidget {
   const ProgressScreen({super.key});
@@ -40,6 +41,33 @@ class _ProgressScreenState extends State<ProgressScreen>
   void dispose() {
     _tabController.dispose();
     super.dispose();
+  }
+
+  Future<void> _deleteProgressEntry(WorkoutProgressModel entry) async {
+    final confirmed = await ToastUtil.showConfirmationDialog(
+      context: context,
+      title: 'Delete Progress Entry',
+      message: 'Are you sure you want to delete this workout progress entry?',
+      confirmText: 'Delete',
+      isDestructive: true,
+    );
+
+    if (!confirmed) return;
+
+    try {
+      final progressProvider =
+          // ignore: use_build_context_synchronously
+          Provider.of<ProgressProvider>(context, listen: false);
+      final success = await progressProvider.deleteWorkoutProgress(entry.id);
+
+      if (success) {
+        ToastUtil.showSuccessToast('Progress entry deleted successfully');
+      } else {
+        ToastUtil.showErrorToast('Failed to delete progress entry');
+      }
+    } catch (e) {
+      ToastUtil.showErrorToast('Error: $e');
+    }
   }
 
   @override
@@ -210,10 +238,10 @@ class _ProgressScreenState extends State<ProgressScreen>
                         },
                       ),
                     ),
-                    topTitles:
-                        const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                    rightTitles:
-                        const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                    topTitles: const AxisTitles(
+                        sideTitles: SideTitles(showTitles: false)),
+                    rightTitles: const AxisTitles(
+                        sideTitles: SideTitles(showTitles: false)),
                   ),
                   borderData: FlBorderData(show: false),
                   gridData: FlGridData(
@@ -285,8 +313,11 @@ class _ProgressScreenState extends State<ProgressScreen>
                     subtitle: Text(
                       '${DateFormat('MMM d, y').format(entry.completedAt)} • ${entry.durationMinutes} minutes',
                     ),
-                    trailing: entry.moodAfter != null
-                        ? CircleAvatar(
+                    trailing: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        if (entry.moodAfter != null)
+                          CircleAvatar(
                             radius: 14,
                             backgroundColor: MoodModel(
                               id: '',
@@ -312,8 +343,14 @@ class _ProgressScreenState extends State<ProgressScreen>
                                 userId: entry.userId,
                               ).moodColor,
                             ),
-                          )
-                        : null,
+                          ),
+                        IconButton(
+                          icon: const Icon(Icons.delete_outline,
+                              color: Colors.red, size: 20),
+                          onPressed: () => _deleteProgressEntry(entry),
+                        ),
+                      ],
+                    ),
                   ),
                 );
               },
@@ -464,31 +501,34 @@ class _ProgressScreenState extends State<ProgressScreen>
                         subtitle: Text(
                           '${DateFormat.jm().format(progress.completedAt)} • ${progress.durationMinutes} minutes',
                         ),
-                        trailing: progress.moodAfter != null
-                            ? Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Icon(
-                                    MoodModel(
-                                      id: '',
-                                      type: progress.moodBefore,
-                                      energyLevel: progress.energyLevelBefore,
-                                      timestamp: progress.completedAt,
-                                      userId: progress.userId,
-                                    ).moodIcon,
-                                    color: MoodModel(
-                                      id: '',
-                                      type: progress.moodBefore,
-                                      energyLevel: progress.energyLevelBefore,
-                                      timestamp: progress.completedAt,
-                                      userId: progress.userId,
-                                    ).moodColor,
-                                    size: 16,
-                                  ),
-                                  const Icon(
-                                    Icons.arrow_right_alt,
-                                    size: 16,
-                                  ),
+                        trailing: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  MoodModel(
+                                    id: '',
+                                    type: progress.moodBefore,
+                                    energyLevel: progress.energyLevelBefore,
+                                    timestamp: progress.completedAt,
+                                    userId: progress.userId,
+                                  ).moodIcon,
+                                  color: MoodModel(
+                                    id: '',
+                                    type: progress.moodBefore,
+                                    energyLevel: progress.energyLevelBefore,
+                                    timestamp: progress.completedAt,
+                                    userId: progress.userId,
+                                  ).moodColor,
+                                  size: 16,
+                                ),
+                                const Icon(
+                                  Icons.arrow_right_alt,
+                                  size: 16,
+                                ),
+                                if (progress.moodAfter != null)
                                   Icon(
                                     MoodModel(
                                       id: '',
@@ -508,9 +548,15 @@ class _ProgressScreenState extends State<ProgressScreen>
                                     ).moodColor,
                                     size: 16,
                                   ),
-                                ],
-                              )
-                            : null,
+                              ],
+                            ),
+                            IconButton(
+                              icon: const Icon(Icons.delete_outline,
+                                  color: Colors.red, size: 20),
+                              onPressed: () => _deleteProgressEntry(progress),
+                            ),
+                          ],
+                        ),
                       ),
                     );
                   }).toList(),
@@ -556,29 +602,69 @@ class _ProgressScreenState extends State<ProgressScreen>
                         subtitle: Text(
                           '${DateFormat.jm().format(mood.timestamp)} • Energy: ${mood.energyLevel}/10',
                         ),
-                        trailing: mood.note != null && mood.note!.isNotEmpty
-                            ? const Icon(Icons.notes)
-                            : null,
-                        onTap: mood.note != null && mood.note!.isNotEmpty
-                            ? () {
-                                showDialog(
-                                  context: context,
-                                  builder: (context) => AlertDialog(
-                                    title: Text(
-                                      'Note - ${mood.type.toString().split('.').last}',
-                                    ),
-                                    content: Text(mood.note!),
-                                    actions: [
-                                      TextButton(
-                                        onPressed: () =>
-                                            Navigator.of(context).pop(),
-                                        child: const Text('Close'),
+                        trailing: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            if (mood.note != null && mood.note!.isNotEmpty)
+                              IconButton(
+                                icon: const Icon(Icons.notes),
+                                onPressed: () {
+                                  showDialog(
+                                    context: context,
+                                    builder: (context) => AlertDialog(
+                                      title: Text(
+                                        'Note - ${mood.type.toString().split('.').last}',
                                       ),
-                                    ],
-                                  ),
+                                      content: Text(mood.note!),
+                                      actions: [
+                                        TextButton(
+                                          onPressed: () =>
+                                              Navigator.of(context).pop(),
+                                          child: const Text('Close'),
+                                        ),
+                                      ],
+                                    ),
+                                  );
+                                },
+                              ),
+                            IconButton(
+                              icon: const Icon(Icons.delete_outline,
+                                  color: Colors.red, size: 20),
+                              onPressed: () async {
+                                final confirmed =
+                                    await ToastUtil.showConfirmationDialog(
+                                  context: context,
+                                  title: 'Delete Mood Entry',
+                                  message:
+                                      'Are you sure you want to delete this mood entry?',
+                                  confirmText: 'Delete',
+                                  isDestructive: true,
                                 );
-                              }
-                            : null,
+
+                                if (confirmed) {
+                                  try {
+                                    final moodProvider =
+                                        // ignore: use_build_context_synchronously
+                                        Provider.of<MoodProvider>(context,
+                                            listen: false);
+                                    final success =
+                                        await moodProvider.deleteMood(mood.id);
+
+                                    if (success) {
+                                      ToastUtil.showSuccessToast(
+                                          'Mood entry deleted successfully');
+                                    } else {
+                                      ToastUtil.showErrorToast(
+                                          'Failed to delete mood entry');
+                                    }
+                                  } catch (e) {
+                                    ToastUtil.showErrorToast('Error: $e');
+                                  }
+                                }
+                              },
+                            ),
+                          ],
+                        ),
                       ),
                     );
                   }).toList(),
@@ -758,8 +844,11 @@ class _ProgressScreenState extends State<ProgressScreen>
                     subtitle: Text(
                       '${DateFormat('MMM d, y').format(mood.timestamp)} • Energy: ${mood.energyLevel}/10',
                     ),
-                    trailing: mood.note != null
-                        ? IconButton(
+                    trailing: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        if (mood.note != null)
+                          IconButton(
                             icon: const Icon(Icons.notes),
                             onPressed: () {
                               showDialog(
@@ -779,8 +868,45 @@ class _ProgressScreenState extends State<ProgressScreen>
                                 ),
                               );
                             },
-                          )
-                        : null,
+                          ),
+                        IconButton(
+                          icon: const Icon(Icons.delete_outline,
+                              color: Colors.red, size: 20),
+                          onPressed: () async {
+                            final confirmed =
+                                await ToastUtil.showConfirmationDialog(
+                              context: context,
+                              title: 'Delete Mood Entry',
+                              message:
+                                  'Are you sure you want to delete this mood entry?',
+                              confirmText: 'Delete',
+                              isDestructive: true,
+                            );
+
+                            if (confirmed) {
+                              try {
+                                // ignore: use_build_context_synchronously
+                                final moodProvider = Provider.of<MoodProvider>(
+                                    context,
+                                    listen: false);
+                                final success =
+                                    await moodProvider.deleteMood(mood.id);
+
+                                if (success) {
+                                  ToastUtil.showSuccessToast(
+                                      'Mood entry deleted successfully');
+                                } else {
+                                  ToastUtil.showErrorToast(
+                                      'Failed to delete mood entry');
+                                }
+                              } catch (e) {
+                                ToastUtil.showErrorToast('Error: $e');
+                              }
+                            }
+                          },
+                        ),
+                      ],
+                    ),
                   ),
                 );
               },

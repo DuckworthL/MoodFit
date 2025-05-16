@@ -90,6 +90,8 @@ class WorkoutModel {
 
   get durationMinutes => null;
 
+  String? get userId => null;
+
   Map<String, dynamic> toJson() {
     return {
       'name': name,

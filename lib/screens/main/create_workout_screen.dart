@@ -1,10 +1,11 @@
-// lib/screens/main/create_workout_screen.dart - Create custom workouts
 import 'package:flutter/material.dart';
 import 'package:moodfit/models/mood_model.dart';
 import 'package:moodfit/models/workout_model.dart';
 import 'package:moodfit/providers/auth_provider.dart';
 import 'package:moodfit/providers/workout_provider.dart';
 import 'package:provider/provider.dart';
+
+import '../../toast_util.dart';
 
 class CreateWorkoutScreen extends StatefulWidget {
   final WorkoutModel? editWorkout;
@@ -82,10 +83,21 @@ class _CreateWorkoutScreenState extends State<CreateWorkoutScreen> {
     });
   }
 
-  void _removeExerciseAt(int index) {
-    setState(() {
-      _exercises.removeAt(index);
-    });
+  void _removeExerciseAt(int index) async {
+    final confirmed = await ToastUtil.showConfirmationDialog(
+      context: context,
+      title: 'Remove Exercise',
+      message: 'Are you sure you want to remove this exercise?',
+      confirmText: 'Remove',
+      isDestructive: true,
+    );
+
+    if (confirmed) {
+      setState(() {
+        _exercises.removeAt(index);
+      });
+      ToastUtil.showSuccessToast('Exercise removed');
+    }
   }
 
   void _editExerciseAt(int index) {
@@ -106,20 +118,30 @@ class _CreateWorkoutScreenState extends State<CreateWorkoutScreen> {
   Future<void> _saveWorkout() async {
     if (_formKey.currentState!.validate()) {
       if (_exercises.isEmpty) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Please add at least one exercise'),
-          ),
-        );
+        ToastUtil.showErrorToast('Please add at least one exercise');
         return;
       }
+
+      // Show confirmation dialog before saving
+      final confirmed = await ToastUtil.showConfirmationDialog(
+        context: context,
+        title: _isEditMode ? 'Update Workout' : 'Save Workout',
+        message: _isEditMode
+            ? 'Are you sure you want to update this workout?'
+            : 'Are you sure you want to save this workout?',
+        confirmText: _isEditMode ? 'Update' : 'Save',
+      );
+
+      if (!confirmed) return;
 
       setState(() {
         _isSubmitting = true;
       });
 
+      // ignore: use_build_context_synchronously
       final authProvider = Provider.of<AuthProvider>(context, listen: false);
       final workoutProvider =
+          // ignore: use_build_context_synchronously
           Provider.of<WorkoutProvider>(context, listen: false);
 
       if (authProvider.uid != null) {
@@ -152,36 +174,22 @@ class _CreateWorkoutScreenState extends State<CreateWorkoutScreen> {
 
         if (result && mounted) {
           Navigator.of(context).pop();
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(_isEditMode
-                  ? 'Workout updated successfully'
-                  : 'Workout created successfully'),
-            ),
-          );
+          ToastUtil.showSuccessToast(_isEditMode
+              ? 'Workout updated successfully'
+              : 'Workout created successfully');
         } else if (mounted) {
           setState(() {
             _isSubmitting = false;
           });
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(workoutProvider.error ??
-                  'Error ${_isEditMode ? 'updating' : 'creating'} workout'),
-              backgroundColor: Colors.red,
-            ),
-          );
+          ToastUtil.showErrorToast(workoutProvider.error ??
+              'Error ${_isEditMode ? 'updating' : 'creating'} workout');
         }
       } else {
         setState(() {
           _isSubmitting = false;
         });
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('User not authenticated'),
-              backgroundColor: Colors.red,
-            ),
-          );
+          ToastUtil.showErrorToast('User not authenticated');
         }
       }
     }
@@ -734,8 +742,21 @@ class _AddExerciseDialogState extends State<AddExerciseDialog> {
           child: const Text('Cancel'),
         ),
         ElevatedButton(
-          onPressed: () {
+          onPressed: () async {
             if (_formKey.currentState!.validate()) {
+              final confirmed = await ToastUtil.showConfirmationDialog(
+                context: context,
+                title: widget.exercise != null
+                    ? 'Update Exercise'
+                    : 'Add Exercise',
+                message: widget.exercise != null
+                    ? 'Are you sure you want to update this exercise?'
+                    : 'Are you sure you want to add this exercise?',
+                confirmText: widget.exercise != null ? 'Update' : 'Add',
+              );
+
+              if (!confirmed) return;
+
               final exercise = Exercise(
                 name: _nameController.text.trim(),
                 description: _descriptionController.text.trim(),
@@ -744,6 +765,7 @@ class _AddExerciseDialogState extends State<AddExerciseDialog> {
                 isRest: _isRest,
               );
               widget.onAddExercise(exercise);
+              // ignore: use_build_context_synchronously
               Navigator.of(context).pop();
             }
           },
