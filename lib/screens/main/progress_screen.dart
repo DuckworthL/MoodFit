@@ -51,14 +51,16 @@ class _ProgressScreenState extends State<ProgressScreen>
       confirmText: 'Delete',
       isDestructive: true,
     );
-
     if (!confirmed) return;
+
+    if (!mounted) return; // Fix: Don't use context if not mounted
 
     try {
       final progressProvider =
-          // ignore: use_build_context_synchronously
           Provider.of<ProgressProvider>(context, listen: false);
       final success = await progressProvider.deleteWorkoutProgress(entry.id);
+
+      if (!mounted) return; // Fix: Don't use context if not mounted
 
       if (success) {
         ToastUtil.showSuccessToast('Progress entry deleted successfully');
@@ -66,17 +68,28 @@ class _ProgressScreenState extends State<ProgressScreen>
         ToastUtil.showErrorToast('Failed to delete progress entry');
       }
     } catch (e) {
+      if (!mounted) return;
       ToastUtil.showErrorToast('Error: $e');
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
     return Scaffold(
+      backgroundColor: colorScheme.background,
       appBar: AppBar(
-        title: const Text('Progress'),
+        backgroundColor: colorScheme.primary,
+        elevation: 0,
+        title: Text('Progress', style: TextStyle(color: colorScheme.onPrimary)),
+        iconTheme: IconThemeData(color: colorScheme.onPrimary),
         bottom: TabBar(
           controller: _tabController,
+          indicatorColor: colorScheme.secondary,
+          labelColor: colorScheme.onPrimary,
+          unselectedLabelColor: colorScheme.onPrimary.withOpacity(0.7),
           tabs: const [
             Tab(text: 'Summary'),
             Tab(text: 'Calendar'),
@@ -87,15 +100,15 @@ class _ProgressScreenState extends State<ProgressScreen>
       body: TabBarView(
         controller: _tabController,
         children: [
-          _buildSummaryTab(),
-          _buildCalendarTab(),
-          _buildMoodTab(),
+          _buildSummaryTab(theme, colorScheme),
+          _buildCalendarTab(theme, colorScheme),
+          _buildMoodTab(theme, colorScheme),
         ],
       ),
     );
   }
 
-  Widget _buildSummaryTab() {
+  Widget _buildSummaryTab(ThemeData theme, ColorScheme colorScheme) {
     final progressProvider = Provider.of<ProgressProvider>(context);
     final totalWorkouts = progressProvider.getTotalWorkoutsCompleted();
     final totalMinutes = progressProvider.getTotalMinutesWorkout();
@@ -136,7 +149,7 @@ class _ProgressScreenState extends State<ProgressScreen>
           barRods: [
             BarChartRodData(
               toY: count.toDouble(),
-              color: Theme.of(context).primaryColor,
+              color: colorScheme.primary,
               borderRadius: BorderRadius.circular(4),
               width: 16,
             ),
@@ -155,15 +168,19 @@ class _ProgressScreenState extends State<ProgressScreen>
             children: [
               Expanded(
                 child: _buildStatCard(
+                  theme,
+                  colorScheme,
                   'Total Workouts',
                   totalWorkouts.toString(),
                   Icons.fitness_center,
-                  Colors.blue,
+                  colorScheme.secondary,
                 ),
               ),
               const SizedBox(width: 16),
               Expanded(
                 child: _buildStatCard(
+                  theme,
+                  colorScheme,
                   'Total Minutes',
                   totalMinutes.toString(),
                   Icons.timer,
@@ -175,11 +192,11 @@ class _ProgressScreenState extends State<ProgressScreen>
           const SizedBox(height: 24),
 
           // Last 7 Days Chart
-          const Text(
+          Text(
             'Workouts - Last 7 Days',
-            style: TextStyle(
-              fontSize: 18,
+            style: theme.textTheme.titleMedium?.copyWith(
               fontWeight: FontWeight.bold,
+              color: colorScheme.onBackground,
             ),
           ),
           const SizedBox(height: 16),
@@ -187,16 +204,22 @@ class _ProgressScreenState extends State<ProgressScreen>
             Container(
               height: 200,
               alignment: Alignment.center,
-              child: const Text(
+              child: Text(
                 'No workout data yet.\nComplete your first workout to see your progress!',
                 textAlign: TextAlign.center,
-                style: TextStyle(color: Colors.grey),
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: colorScheme.onSurface.withOpacity(0.6),
+                ),
               ),
             )
           else
             Container(
               height: 200,
               padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: theme.cardColor,
+                borderRadius: BorderRadius.circular(16),
+              ),
               child: BarChart(
                 BarChartData(
                   alignment: BarChartAlignment.spaceAround,
@@ -216,7 +239,8 @@ class _ProgressScreenState extends State<ProgressScreen>
                             return Padding(
                               padding: const EdgeInsets.only(top: 8),
                               child: Text(labels[value.toInt()],
-                                  style: const TextStyle(fontSize: 10)),
+                                  style: theme.textTheme.bodySmall
+                                      ?.copyWith(color: colorScheme.onSurface)),
                             );
                           }
                           return const SizedBox.shrink();
@@ -231,7 +255,11 @@ class _ProgressScreenState extends State<ProgressScreen>
                           if (value == value.toInt() && value >= 0) {
                             return Padding(
                               padding: const EdgeInsets.only(right: 8),
-                              child: Text(value.toInt().toString()),
+                              child: Text(
+                                value.toInt().toString(),
+                                style: theme.textTheme.bodySmall
+                                    ?.copyWith(color: colorScheme.onSurface),
+                              ),
                             );
                           }
                           return const SizedBox.shrink();
@@ -249,7 +277,7 @@ class _ProgressScreenState extends State<ProgressScreen>
                     horizontalInterval: 1,
                     drawVerticalLine: false,
                     getDrawingHorizontalLine: (value) => FlLine(
-                      color: Colors.grey.shade300,
+                      color: colorScheme.outline.withOpacity(0.1),
                       strokeWidth: 1,
                     ),
                   ),
@@ -260,11 +288,11 @@ class _ProgressScreenState extends State<ProgressScreen>
           const SizedBox(height: 24),
 
           // Recent Workouts
-          const Text(
+          Text(
             'Recent Workouts',
-            style: TextStyle(
-              fontSize: 18,
+            style: theme.textTheme.titleMedium?.copyWith(
               fontWeight: FontWeight.bold,
+              color: colorScheme.onBackground,
             ),
           ),
           const SizedBox(height: 16),
@@ -273,13 +301,15 @@ class _ProgressScreenState extends State<ProgressScreen>
               alignment: Alignment.center,
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                border: Border.all(color: Colors.grey.shade200),
+                color: theme.cardColor,
                 borderRadius: BorderRadius.circular(12),
               ),
-              child: const Text(
+              child: Text(
                 'No workout history yet.\nStart your first workout to track your progress!',
                 textAlign: TextAlign.center,
-                style: TextStyle(color: Colors.grey),
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: colorScheme.onSurface.withOpacity(0.6),
+                ),
               ),
             )
           else
@@ -299,8 +329,19 @@ class _ProgressScreenState extends State<ProgressScreen>
                   userId: entry.userId,
                 );
 
-                return Card(
+                return Container(
                   margin: const EdgeInsets.only(bottom: 12),
+                  decoration: BoxDecoration(
+                    color: theme.cardColor,
+                    borderRadius: BorderRadius.circular(12),
+                    boxShadow: [
+                      BoxShadow(
+                        color: colorScheme.shadow.withOpacity(0.04),
+                        blurRadius: 4,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                  ),
                   child: ListTile(
                     leading: CircleAvatar(
                       backgroundColor: moodBefore.moodColor.withOpacity(0.2),
@@ -309,9 +350,15 @@ class _ProgressScreenState extends State<ProgressScreen>
                         color: moodBefore.moodColor,
                       ),
                     ),
-                    title: Text(entry.workoutName),
+                    title: Text(
+                      entry.workoutName,
+                      style: theme.textTheme.titleMedium,
+                    ),
                     subtitle: Text(
                       '${DateFormat('MMM d, y').format(entry.completedAt)} • ${entry.durationMinutes} minutes',
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: colorScheme.onSurface.withOpacity(0.8),
+                      ),
                     ),
                     trailing: Row(
                       mainAxisSize: MainAxisSize.min,
@@ -345,9 +392,11 @@ class _ProgressScreenState extends State<ProgressScreen>
                             ),
                           ),
                         IconButton(
-                          icon: const Icon(Icons.delete_outline,
-                              color: Colors.red, size: 20),
-                          onPressed: () => _deleteProgressEntry(entry),
+                          icon: Icon(Icons.delete_outline,
+                              color: colorScheme.error, size: 20),
+                          onPressed: () async {
+                            await _deleteProgressEntry(entry);
+                          },
                         ),
                       ],
                     ),
@@ -360,7 +409,7 @@ class _ProgressScreenState extends State<ProgressScreen>
     );
   }
 
-  Widget _buildCalendarTab() {
+  Widget _buildCalendarTab(ThemeData theme, ColorScheme colorScheme) {
     final progressProvider = Provider.of<ProgressProvider>(context);
     final moodProvider = Provider.of<MoodProvider>(context);
 
@@ -437,7 +486,7 @@ class _ProgressScreenState extends State<ProgressScreen>
                         height: 8,
                         margin: const EdgeInsets.only(right: 2),
                         decoration: BoxDecoration(
-                          color: Theme.of(context).primaryColor,
+                          color: theme.colorScheme.primary,
                           shape: BoxShape.circle,
                         ),
                       ),
@@ -446,8 +495,8 @@ class _ProgressScreenState extends State<ProgressScreen>
                         width: 8,
                         height: 8,
                         margin: const EdgeInsets.only(left: 2),
-                        decoration: const BoxDecoration(
-                          color: Colors.orange,
+                        decoration: BoxDecoration(
+                          color: theme.colorScheme.secondary,
                           shape: BoxShape.circle,
                         ),
                       ),
@@ -467,18 +516,17 @@ class _ProgressScreenState extends State<ProgressScreen>
               children: [
                 Text(
                   DateFormat.yMMMMd().format(_selectedDay),
-                  style: const TextStyle(
-                    fontSize: 18,
+                  style: theme.textTheme.titleMedium?.copyWith(
                     fontWeight: FontWeight.bold,
+                    color: colorScheme.onBackground,
                   ),
                 ),
                 const SizedBox(height: 16),
 
                 // Workouts for selected day
-                const Text(
+                Text(
                   'Workouts',
-                  style: TextStyle(
-                    fontSize: 16,
+                  style: theme.textTheme.bodyLarge?.copyWith(
                     fontWeight: FontWeight.bold,
                   ),
                 ),
@@ -488,18 +536,31 @@ class _ProgressScreenState extends State<ProgressScreen>
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
                       borderRadius: BorderRadius.circular(8),
-                      color: Colors.grey.shade100,
+                      color: theme.cardColor,
                     ),
-                    child: const Text('No workouts on this day'),
+                    child: Text('No workouts on this day',
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          color: colorScheme.onSurface.withOpacity(0.7),
+                        )),
                   )
                 else
                   ...workoutsByDate[_selectedDay]!.map((progress) {
-                    return Card(
+                    return Container(
                       margin: const EdgeInsets.only(bottom: 8),
+                      decoration: BoxDecoration(
+                        color: theme.cardColor,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
                       child: ListTile(
-                        title: Text(progress.workoutName),
+                        title: Text(
+                          progress.workoutName,
+                          style: theme.textTheme.bodyLarge,
+                        ),
                         subtitle: Text(
                           '${DateFormat.jm().format(progress.completedAt)} • ${progress.durationMinutes} minutes',
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: colorScheme.onSurface.withOpacity(0.8),
+                          ),
                         ),
                         trailing: Row(
                           mainAxisSize: MainAxisSize.min,
@@ -551,9 +612,11 @@ class _ProgressScreenState extends State<ProgressScreen>
                               ],
                             ),
                             IconButton(
-                              icon: const Icon(Icons.delete_outline,
-                                  color: Colors.red, size: 20),
-                              onPressed: () => _deleteProgressEntry(progress),
+                              icon: Icon(Icons.delete_outline,
+                                  color: colorScheme.error, size: 20),
+                              onPressed: () async {
+                                await _deleteProgressEntry(progress);
+                              },
                             ),
                           ],
                         ),
@@ -564,10 +627,9 @@ class _ProgressScreenState extends State<ProgressScreen>
                 const SizedBox(height: 24),
 
                 // Moods for selected day
-                const Text(
+                Text(
                   'Moods',
-                  style: TextStyle(
-                    fontSize: 16,
+                  style: theme.textTheme.bodyLarge?.copyWith(
                     fontWeight: FontWeight.bold,
                   ),
                 ),
@@ -577,14 +639,21 @@ class _ProgressScreenState extends State<ProgressScreen>
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
                       borderRadius: BorderRadius.circular(8),
-                      color: Colors.grey.shade100,
+                      color: theme.cardColor,
                     ),
-                    child: const Text('No mood entries on this day'),
+                    child: Text('No mood entries on this day',
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          color: colorScheme.onSurface.withOpacity(0.7),
+                        )),
                   )
                 else
                   ...moodsByDate[_selectedDay]!.map((mood) {
-                    return Card(
+                    return Container(
                       margin: const EdgeInsets.only(bottom: 8),
+                      decoration: BoxDecoration(
+                        color: theme.cardColor,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
                       child: ListTile(
                         leading: CircleAvatar(
                           backgroundColor: mood.moodColor.withOpacity(0.2),
@@ -595,19 +664,23 @@ class _ProgressScreenState extends State<ProgressScreen>
                         ),
                         title: Text(
                           mood.type.toString().split('.').last,
-                          style: const TextStyle(
+                          style: theme.textTheme.bodyLarge?.copyWith(
                             fontWeight: FontWeight.bold,
                           ),
                         ),
                         subtitle: Text(
                           '${DateFormat.jm().format(mood.timestamp)} • Energy: ${mood.energyLevel}/10',
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: colorScheme.onSurface.withOpacity(0.8),
+                          ),
                         ),
                         trailing: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             if (mood.note != null && mood.note!.isNotEmpty)
                               IconButton(
-                                icon: const Icon(Icons.notes),
+                                icon: Icon(Icons.notes,
+                                    color: colorScheme.secondary),
                                 onPressed: () {
                                   showDialog(
                                     context: context,
@@ -628,8 +701,8 @@ class _ProgressScreenState extends State<ProgressScreen>
                                 },
                               ),
                             IconButton(
-                              icon: const Icon(Icons.delete_outline,
-                                  color: Colors.red, size: 20),
+                              icon: Icon(Icons.delete_outline,
+                                  color: colorScheme.error, size: 20),
                               onPressed: () async {
                                 final confirmed =
                                     await ToastUtil.showConfirmationDialog(
@@ -640,26 +713,26 @@ class _ProgressScreenState extends State<ProgressScreen>
                                   confirmText: 'Delete',
                                   isDestructive: true,
                                 );
+                                if (!confirmed) return;
+                                if (!mounted) return;
 
-                                if (confirmed) {
-                                  try {
-                                    final moodProvider =
-                                        // ignore: use_build_context_synchronously
-                                        Provider.of<MoodProvider>(context,
-                                            listen: false);
-                                    final success =
-                                        await moodProvider.deleteMood(mood.id);
-
-                                    if (success) {
-                                      ToastUtil.showSuccessToast(
-                                          'Mood entry deleted successfully');
-                                    } else {
-                                      ToastUtil.showErrorToast(
-                                          'Failed to delete mood entry');
-                                    }
-                                  } catch (e) {
-                                    ToastUtil.showErrorToast('Error: $e');
+                                try {
+                                  final moodProvider =
+                                      Provider.of<MoodProvider>(context,
+                                          listen: false);
+                                  final success =
+                                      await moodProvider.deleteMood(mood.id);
+                                  if (!mounted) return;
+                                  if (success) {
+                                    ToastUtil.showSuccessToast(
+                                        'Mood entry deleted successfully');
+                                  } else {
+                                    ToastUtil.showErrorToast(
+                                        'Failed to delete mood entry');
                                   }
+                                } catch (e) {
+                                  if (!mounted) return;
+                                  ToastUtil.showErrorToast('Error: $e');
                                 }
                               },
                             ),
@@ -676,7 +749,7 @@ class _ProgressScreenState extends State<ProgressScreen>
     );
   }
 
-  Widget _buildMoodTab() {
+  Widget _buildMoodTab(ThemeData theme, ColorScheme colorScheme) {
     final moodProvider = Provider.of<MoodProvider>(context);
 
     // Count moods by type
@@ -726,11 +799,11 @@ class _ProgressScreenState extends State<ProgressScreen>
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Mood Distribution
-          const Text(
+          Text(
             'Mood Distribution',
-            style: TextStyle(
-              fontSize: 18,
+            style: theme.textTheme.titleMedium?.copyWith(
               fontWeight: FontWeight.bold,
+              color: colorScheme.onBackground,
             ),
           ),
           const SizedBox(height: 16),
@@ -738,15 +811,21 @@ class _ProgressScreenState extends State<ProgressScreen>
             Container(
               height: 200,
               alignment: Alignment.center,
-              child: const Text(
+              child: Text(
                 'No mood data yet.\nLog your first mood to see your distribution!',
                 textAlign: TextAlign.center,
-                style: TextStyle(color: Colors.grey),
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: colorScheme.onSurface.withOpacity(0.6),
+                ),
               ),
             )
           else
-            SizedBox(
+            Container(
               height: 250,
+              decoration: BoxDecoration(
+                color: theme.cardColor,
+                borderRadius: BorderRadius.circular(16),
+              ),
               child: PieChart(
                 PieChartData(
                   sections: pieChartData,
@@ -786,7 +865,7 @@ class _ProgressScreenState extends State<ProgressScreen>
                       const SizedBox(width: 4),
                       Text(
                         type.toString().split('.').last,
-                        style: const TextStyle(fontSize: 12),
+                        style: theme.textTheme.bodySmall,
                       ),
                     ],
                   );
@@ -797,11 +876,11 @@ class _ProgressScreenState extends State<ProgressScreen>
           const SizedBox(height: 24),
 
           // Recent Moods
-          const Text(
+          Text(
             'Recent Mood Entries',
-            style: TextStyle(
-              fontSize: 18,
+            style: theme.textTheme.titleMedium?.copyWith(
               fontWeight: FontWeight.bold,
+              color: colorScheme.onBackground,
             ),
           ),
           const SizedBox(height: 16),
@@ -810,13 +889,15 @@ class _ProgressScreenState extends State<ProgressScreen>
               alignment: Alignment.center,
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                border: Border.all(color: Colors.grey.shade200),
+                color: theme.cardColor,
                 borderRadius: BorderRadius.circular(12),
               ),
-              child: const Text(
+              child: Text(
                 'No recent mood entries.\nUpdate your mood to track how you feel!',
                 textAlign: TextAlign.center,
-                style: TextStyle(color: Colors.grey),
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: colorScheme.onSurface.withOpacity(0.6),
+                ),
               ),
             )
           else
@@ -827,8 +908,12 @@ class _ProgressScreenState extends State<ProgressScreen>
               itemBuilder: (context, index) {
                 final mood = last7DaysMoods[index];
 
-                return Card(
+                return Container(
                   margin: const EdgeInsets.only(bottom: 12),
+                  decoration: BoxDecoration(
+                    color: theme.cardColor,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
                   child: ListTile(
                     leading: CircleAvatar(
                       backgroundColor: mood.moodColor.withOpacity(0.2),
@@ -839,17 +924,23 @@ class _ProgressScreenState extends State<ProgressScreen>
                     ),
                     title: Text(
                       mood.type.toString().split('.').last,
-                      style: const TextStyle(fontWeight: FontWeight.bold),
+                      style: theme.textTheme.bodyLarge?.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                     subtitle: Text(
                       '${DateFormat('MMM d, y').format(mood.timestamp)} • Energy: ${mood.energyLevel}/10',
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: colorScheme.onSurface.withOpacity(0.8),
+                      ),
                     ),
                     trailing: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        if (mood.note != null)
+                        if (mood.note != null && mood.note!.isNotEmpty)
                           IconButton(
-                            icon: const Icon(Icons.notes),
+                            icon:
+                                Icon(Icons.notes, color: colorScheme.secondary),
                             onPressed: () {
                               showDialog(
                                 context: context,
@@ -870,8 +961,8 @@ class _ProgressScreenState extends State<ProgressScreen>
                             },
                           ),
                         IconButton(
-                          icon: const Icon(Icons.delete_outline,
-                              color: Colors.red, size: 20),
+                          icon: Icon(Icons.delete_outline,
+                              color: colorScheme.error, size: 20),
                           onPressed: () async {
                             final confirmed =
                                 await ToastUtil.showConfirmationDialog(
@@ -882,26 +973,26 @@ class _ProgressScreenState extends State<ProgressScreen>
                               confirmText: 'Delete',
                               isDestructive: true,
                             );
+                            if (!confirmed) return;
+                            if (!mounted) return;
 
-                            if (confirmed) {
-                              try {
-                                // ignore: use_build_context_synchronously
-                                final moodProvider = Provider.of<MoodProvider>(
-                                    context,
-                                    listen: false);
-                                final success =
-                                    await moodProvider.deleteMood(mood.id);
-
-                                if (success) {
-                                  ToastUtil.showSuccessToast(
-                                      'Mood entry deleted successfully');
-                                } else {
-                                  ToastUtil.showErrorToast(
-                                      'Failed to delete mood entry');
-                                }
-                              } catch (e) {
-                                ToastUtil.showErrorToast('Error: $e');
+                            try {
+                              final moodProvider = Provider.of<MoodProvider>(
+                                  context,
+                                  listen: false);
+                              final success =
+                                  await moodProvider.deleteMood(mood.id);
+                              if (!mounted) return;
+                              if (success) {
+                                ToastUtil.showSuccessToast(
+                                    'Mood entry deleted successfully');
+                              } else {
+                                ToastUtil.showErrorToast(
+                                    'Failed to delete mood entry');
                               }
+                            } catch (e) {
+                              if (!mounted) return;
+                              ToastUtil.showErrorToast('Error: $e');
                             }
                           },
                         ),
@@ -916,15 +1007,16 @@ class _ProgressScreenState extends State<ProgressScreen>
     );
   }
 
-  Widget _buildStatCard(
-      String title, String value, IconData icon, Color color) {
+  Widget _buildStatCard(ThemeData theme, ColorScheme colorScheme, String title,
+      String value, IconData icon, Color iconColor) {
     return Card(
-      elevation: 4,
+      elevation: 2,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(14),
       ),
+      color: theme.cardColor,
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(18),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -932,14 +1024,15 @@ class _ProgressScreenState extends State<ProgressScreen>
               children: [
                 Icon(
                   icon,
-                  color: color,
+                  color: iconColor,
+                  size: 26,
                 ),
                 const SizedBox(width: 8),
                 Text(
                   title,
-                  style: TextStyle(
-                    color: Colors.grey.shade700,
-                    fontWeight: FontWeight.w500,
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: colorScheme.onSurface.withOpacity(0.70),
+                    fontWeight: FontWeight.w600,
                   ),
                 ),
               ],
@@ -947,9 +1040,9 @@ class _ProgressScreenState extends State<ProgressScreen>
             const SizedBox(height: 12),
             Text(
               value,
-              style: const TextStyle(
-                fontSize: 28,
+              style: theme.textTheme.headlineSmall?.copyWith(
                 fontWeight: FontWeight.bold,
+                color: colorScheme.onSurface,
               ),
             ),
           ],

@@ -11,7 +11,7 @@ import 'package:provider/provider.dart';
 class WorkoutCompleteScreen extends StatefulWidget {
   final WorkoutModel workout;
 
-  const WorkoutCompleteScreen({super.key, required this.workout});
+  const WorkoutCompleteScreen({super.key, required this.workout, required int caloriesBurned});
 
   @override
   State<WorkoutCompleteScreen> createState() => _WorkoutCompleteScreenState();

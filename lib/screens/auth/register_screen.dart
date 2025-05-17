@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:moodfit/providers/auth_provider.dart';
-import 'package:moodfit/screens/main/mood_selection_screen.dart';
+import 'package:moodfit/screens/auth/login_screen.dart';
 import 'package:moodfit/utils/signup_handler.dart';
 import 'package:provider/provider.dart';
-
-import '../../toast_util.dart';
+import '../../utils/toast_util.dart';
+import 'package:moodfit/widgets/slider_verification.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -22,6 +22,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   bool _isPasswordVisible = false;
   bool _isConfirmPasswordVisible = false;
   bool _acceptTerms = false;
+  bool _isHumanVerified = false;
 
   @override
   void dispose() {
@@ -33,7 +34,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   }
 
   Future<void> _handleRegister() async {
-    if (_formKey.currentState!.validate() && _acceptTerms) {
+    if (_formKey.currentState!.validate() && _acceptTerms && _isHumanVerified) {
       // Show confirmation dialog before registering
       final confirmed = await ToastUtil.showConfirmationDialog(
         context: context,
@@ -44,7 +45,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
       if (!confirmed) return;
 
-      // Mark signup as active BEFORE Firebase authentication
+      // Mark signup as active BEFORE Firebase authentication (optional, you may remove if unused)
       await SignupHandler.markSignupActive();
       debugPrint("RegisterScreen: Marked signup as active");
 
@@ -58,17 +59,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
       if (result && mounted) {
         // Show success toast
-        ToastUtil.showSuccessToast('Account created successfully');
+        ToastUtil.showSuccessToast(
+            'Account created successfully! Please log in.');
 
-        // Add debug print
-        debugPrint(
-            "RegisterScreen: Registration successful, navigating to mood selection with isInitialSetup=true");
-
+        // Instead of auto-login, go to LoginScreen
         Navigator.of(context).pushReplacement(
-          MaterialPageRoute(
-            builder: (context) =>
-                const MoodSelectionScreen(isInitialSetup: true),
-          ),
+          MaterialPageRoute(builder: (context) => const LoginScreen()),
         );
       } else if (mounted && authProvider.error != null) {
         // Clear signup flag if registration failed
@@ -79,6 +75,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
       }
     } else if (!_acceptTerms && mounted) {
       ToastUtil.showErrorToast('Please accept the terms and conditions');
+    } else if (!_isHumanVerified && mounted) {
+      ToastUtil.showErrorToast('Please verify you are human');
     }
   }
 
@@ -252,7 +250,16 @@ class _RegisterScreenState extends State<RegisterScreen> {
                               ),
                             ],
                           ),
-                          const SizedBox(height: 24),
+                          const SizedBox(height: 16),
+                          // SliderVerification widget for human check
+                          SliderVerification(
+                            onVerified: (verified) {
+                              setState(() {
+                                _isHumanVerified = verified;
+                              });
+                            },
+                          ),
+                          const SizedBox(height: 16),
                           if (authProvider.error != null)
                             Container(
                               padding: const EdgeInsets.symmetric(

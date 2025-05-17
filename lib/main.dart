@@ -88,12 +88,18 @@ class _SplashScreenWithRedirectionState
   }
 
   Future<void> _checkSignupRedirection() async {
+    final authProvider =
+        Provider.of<app_auth.AuthProvider>(context, listen: false);
     final isSignupActive = await SignupHandler.isSignupActive();
-    debugPrint(
-        'Splash: Checking signup redirection, isSignupActive = $isSignupActive');
 
-    if (isSignupActive && mounted) {
-      // If signup is active, navigate to mood selection after a short delay
+    debugPrint(
+        'Splash: Checking signup redirection, isSignupActive = $isSignupActive, isAuthenticated = ${authProvider.isAuthenticated}');
+
+    // Only redirect to mood selection if BOTH conditions are true:
+    // 1. Signup is active (indicating a new registration)
+    // 2. User is authenticated (user has actually logged in)
+    if (isSignupActive && authProvider.isAuthenticated && mounted) {
+      // If signup is active and user is authenticated, navigate to mood selection
       Future.delayed(const Duration(milliseconds: 1500), () {
         if (mounted) {
           Navigator.of(context).pushReplacement(
@@ -104,6 +110,11 @@ class _SplashScreenWithRedirectionState
           );
         }
       });
+    } else if (isSignupActive && !authProvider.isAuthenticated) {
+      // Clear the signup flag if it's set but user is not authenticated
+      debugPrint(
+          'Clearing stale signup flag because user is not authenticated');
+      await SignupHandler.clearSignupActive();
     }
   }
 

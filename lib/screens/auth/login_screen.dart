@@ -3,8 +3,9 @@ import 'package:moodfit/providers/auth_provider.dart';
 import 'package:moodfit/screens/auth/register_screen.dart';
 import 'package:moodfit/screens/main/dashboard_screen.dart';
 import 'package:provider/provider.dart';
-
-import '../../toast_util.dart';
+import '../../utils/toast_util.dart';
+import 'package:moodfit/widgets/slider_verification.dart';
+import 'package:moodfit/widgets/password_reset_dialog.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -19,6 +20,7 @@ class _LoginScreenState extends State<LoginScreen> {
   final _passwordController = TextEditingController();
   bool _isPasswordVisible = false;
   bool _rememberMe = false;
+  bool _isHumanVerified = false;
 
   @override
   void dispose() {
@@ -29,37 +31,31 @@ class _LoginScreenState extends State<LoginScreen> {
 
   Future<void> _handleLogin() async {
     if (_formKey.currentState!.validate()) {
-      // Show confirmation dialog before login
-      final confirmed = await ToastUtil.showConfirmationDialog(
-          context: context,
-          title: 'Sign In',
-          message: 'Do you want to sign in with these credentials?',
-          confirmText: 'Sign In');
-
-      if (!confirmed) return;
-
-      // ignore: use_build_context_synchronously
       final authProvider = Provider.of<AuthProvider>(context, listen: false);
-
-      // Show loading indicator
-      setState(() {
-        // You may want to add a loading state here
-      });
 
       final result = await authProvider.signIn(
         _emailController.text.trim(),
         _passwordController.text.trim(),
       );
 
-      if (result && mounted) {
+      if (!mounted) return;
+
+      if (result) {
         ToastUtil.showSuccessToast('Login successful');
         Navigator.of(context).pushReplacement(
           MaterialPageRoute(builder: (context) => const DashboardScreen()),
         );
-      } else if (mounted && authProvider.error != null) {
+      } else if (authProvider.error != null) {
         ToastUtil.showErrorToast(authProvider.error!);
       }
     }
+  }
+
+  void _openPasswordResetDialog() {
+    showDialog(
+      context: context,
+      builder: (_) => const PasswordResetDialog(),
+    );
   }
 
   @override
@@ -175,14 +171,20 @@ class _LoginScreenState extends State<LoginScreen> {
                                 ],
                               ),
                               TextButton(
-                                onPressed: () {
-                                  //TODOImplementforgot password functionality
-                                },
+                                onPressed: _openPasswordResetDialog,
                                 child: const Text('Forgot Password?'),
                               ),
                             ],
                           ),
-                          const SizedBox(height: 24),
+                          const SizedBox(height: 16),
+                          SliderVerification(
+                            onVerified: (verified) {
+                              setState(() {
+                                _isHumanVerified = verified;
+                              });
+                            },
+                          ),
+                          const SizedBox(height: 16),
                           if (authProvider.error != null)
                             Container(
                               padding: const EdgeInsets.symmetric(
@@ -203,7 +205,9 @@ class _LoginScreenState extends State<LoginScreen> {
                             width: double.infinity,
                             child: ElevatedButton(
                               onPressed:
-                                  authProvider.isLoading ? null : _handleLogin,
+                                  _isHumanVerified && !authProvider.isLoading
+                                      ? _handleLogin
+                                      : null,
                               child: authProvider.isLoading
                                   ? const SizedBox(
                                       height: 20,

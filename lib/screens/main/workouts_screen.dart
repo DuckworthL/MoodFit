@@ -1,4 +1,3 @@
-// lib/screens/main/workouts_screen.dart - Browse and manage workouts
 import 'package:flutter/material.dart';
 import 'package:moodfit/models/mood_model.dart';
 import 'package:moodfit/models/workout_model.dart';
@@ -52,6 +51,9 @@ class _WorkoutsScreenState extends State<WorkoutsScreen>
   @override
   Widget build(BuildContext context) {
     final workoutProvider = Provider.of<WorkoutProvider>(context);
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final cardColor = theme.cardColor;
 
     // Filter workouts based on search
     final allWorkouts = _filterWorkouts(workoutProvider.workouts);
@@ -66,16 +68,20 @@ class _WorkoutsScreenState extends State<WorkoutsScreen>
     }
 
     return Scaffold(
+      backgroundColor: colorScheme.background,
       appBar: AppBar(
+        backgroundColor: colorScheme.primary,
+        elevation: 0,
         title: _isSearchMode
             ? TextField(
                 controller: _searchController,
                 decoration: InputDecoration(
                   hintText: 'Search workouts...',
-                  hintStyle: const TextStyle(color: Colors.white70),
+                  hintStyle:
+                      TextStyle(color: colorScheme.onPrimary.withOpacity(0.7)),
                   border: InputBorder.none,
                   suffixIcon: IconButton(
-                    icon: const Icon(Icons.clear, color: Colors.white),
+                    icon: Icon(Icons.clear, color: colorScheme.onPrimary),
                     onPressed: () {
                       _searchController.clear();
                       setState(() {
@@ -84,14 +90,15 @@ class _WorkoutsScreenState extends State<WorkoutsScreen>
                     },
                   ),
                 ),
-                style: const TextStyle(color: Colors.white),
+                style: TextStyle(color: colorScheme.onPrimary),
                 autofocus: true,
               )
-            : const Text('Workouts'),
+            : Text('Workouts', style: TextStyle(color: colorScheme.onPrimary)),
+        iconTheme: IconThemeData(color: colorScheme.onPrimary),
         actions: [
           if (!_isSearchMode)
             IconButton(
-              icon: const Icon(Icons.search),
+              icon: Icon(Icons.search, color: colorScheme.onPrimary),
               onPressed: () {
                 setState(() {
                   _isSearchMode = true;
@@ -101,6 +108,10 @@ class _WorkoutsScreenState extends State<WorkoutsScreen>
         ],
         bottom: TabBar(
           controller: _tabController,
+          indicatorColor: colorScheme.secondary,
+          labelColor: colorScheme.onPrimary,
+          unselectedLabelColor: colorScheme.onPrimary.withOpacity(0.7),
+          indicatorWeight: 3,
           tabs: const [
             Tab(text: 'All'),
             Tab(text: 'Quick'),
@@ -112,11 +123,11 @@ class _WorkoutsScreenState extends State<WorkoutsScreen>
         children: [
           // Manage Workouts button
           Container(
-            padding:
-                const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+            margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             child: ElevatedButton.icon(
-              icon: const Icon(Icons.list),
-              label: const Text('Manage My Workouts'),
+              icon: const Icon(Icons.list_alt),
+              label: const Text('Manage My Workouts',
+                  style: TextStyle(fontWeight: FontWeight.bold)),
               onPressed: () {
                 Navigator.push(
                   context,
@@ -126,8 +137,14 @@ class _WorkoutsScreenState extends State<WorkoutsScreen>
                 );
               },
               style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.blueGrey,
-                minimumSize: const Size(double.infinity, 40),
+                backgroundColor: colorScheme.secondary,
+                foregroundColor: colorScheme.onSecondary,
+                elevation: 3,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                minimumSize: const Size(double.infinity, 48),
+                textStyle: const TextStyle(fontSize: 16),
               ),
             ),
           ),
@@ -138,19 +155,21 @@ class _WorkoutsScreenState extends State<WorkoutsScreen>
               controller: _tabController,
               children: [
                 // All Workouts Tab
-                _buildWorkoutList(allWorkouts),
+                _buildWorkoutList(allWorkouts, cardColor, colorScheme, theme),
 
                 // Quick Workouts Tab
-                _buildWorkoutList(quickWorkouts),
+                _buildWorkoutList(quickWorkouts, cardColor, colorScheme, theme),
 
                 // By Mood Tab
-                _buildMoodFilteredWorkouts(moodWorkouts),
+                _buildMoodFilteredWorkouts(
+                    moodWorkouts, cardColor, colorScheme, theme),
               ],
             ),
           ),
         ],
       ),
       floatingActionButton: FloatingActionButton(
+        backgroundColor: colorScheme.primary,
         onPressed: () {
           Navigator.push(
             context,
@@ -159,55 +178,64 @@ class _WorkoutsScreenState extends State<WorkoutsScreen>
             ),
           );
         },
-        child: const Icon(Icons.add),
+        child: Icon(Icons.add, color: colorScheme.onPrimary),
       ),
     );
   }
 
-  Widget _buildWorkoutList(List<WorkoutModel> workouts) {
+  Widget _buildWorkoutList(List<WorkoutModel> workouts, Color cardColor,
+      ColorScheme colorScheme, ThemeData theme) {
     if (workouts.isEmpty) {
-      return const Center(
-        child: Text('No workouts found'),
+      return Center(
+        child: Text('No workouts found',
+            style: theme.textTheme.bodyMedium
+                ?.copyWith(color: colorScheme.onBackground.withOpacity(0.7))),
       );
     }
 
     return ListView.builder(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 6),
       itemCount: workouts.length,
       itemBuilder: (context, index) {
         final workout = workouts[index];
-        return _buildWorkoutCard(workout);
+        return _buildWorkoutCard(workout, cardColor, colorScheme, theme);
       },
     );
   }
 
   Widget _buildMoodFilteredWorkouts(
-      Map<MoodType, List<WorkoutModel>> moodWorkouts) {
+    Map<MoodType, List<WorkoutModel>> moodWorkouts,
+    Color cardColor,
+    ColorScheme colorScheme,
+    ThemeData theme,
+  ) {
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: MoodType.values.map((moodType) {
           final workouts = moodWorkouts[moodType] ?? [];
           if (workouts.isEmpty) {
-            return Container();
+            return const SizedBox.shrink();
           }
 
           return Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Padding(
-                padding: const EdgeInsets.symmetric(vertical: 8.0),
+                padding: const EdgeInsets.only(top: 12, bottom: 6),
                 child: Text(
                   moodType.toString().split('.').last.toUpperCase(),
-                  style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    color: colorScheme.primary,
+                    fontWeight: FontWeight.w800,
                   ),
                 ),
               ),
-              ...workouts.map((workout) => _buildWorkoutCard(workout)).toList(),
-              const SizedBox(height: 16),
+              ...workouts
+                  .map((workout) =>
+                      _buildWorkoutCard(workout, cardColor, colorScheme, theme))
+                  .toList(),
             ],
           );
         }).toList(),
@@ -215,7 +243,8 @@ class _WorkoutsScreenState extends State<WorkoutsScreen>
     );
   }
 
-  Widget _buildWorkoutCard(WorkoutModel workout) {
+  Widget _buildWorkoutCard(WorkoutModel workout, Color cardColor,
+      ColorScheme colorScheme, ThemeData theme) {
     final MoodModel moodModel = MoodModel(
       id: '',
       type: workout.recommendedMood,
@@ -224,106 +253,100 @@ class _WorkoutsScreenState extends State<WorkoutsScreen>
       userId: '',
     );
 
-    return Card(
-      margin: const EdgeInsets.only(bottom: 16),
-      clipBehavior: Clip.antiAlias,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-      ),
-      elevation: 4,
-      child: InkWell(
-        onTap: () {
-          Provider.of<WorkoutProvider>(context, listen: false)
-              .setCurrentWorkout(workout);
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => WorkoutDetailScreen(workout: workout),
+    return GestureDetector(
+      onTap: () {
+        Provider.of<WorkoutProvider>(context, listen: false)
+            .setCurrentWorkout(workout);
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => WorkoutDetailScreen(workout: workout),
+          ),
+        );
+      },
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 17),
+        decoration: BoxDecoration(
+          color: cardColor,
+          borderRadius: BorderRadius.circular(18),
+          boxShadow: [
+            BoxShadow(
+              color: colorScheme.shadow.withOpacity(0.07),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
             ),
-          );
-        },
+          ],
+        ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Container(
-              height: 150,
-              decoration: BoxDecoration(
-                image: DecorationImage(
-                  image: AssetImage(workout.backgroundImage),
+            // Workout image
+            ClipRRect(
+              borderRadius: const BorderRadius.only(
+                  topLeft: Radius.circular(18), topRight: Radius.circular(18)),
+              child: AspectRatio(
+                aspectRatio: 16 / 9,
+                child: Image.asset(
+                  workout.backgroundImage,
                   fit: BoxFit.cover,
+                  errorBuilder: (context, error, stackTrace) => Container(
+                    color: colorScheme.surfaceVariant,
+                    alignment: Alignment.center,
+                    child: Icon(Icons.image_not_supported,
+                        size: 40,
+                        color: colorScheme.onSurface.withOpacity(0.4)),
+                  ),
                 ),
               ),
             ),
             Padding(
-              padding: const EdgeInsets.all(16.0),
+              padding: const EdgeInsets.fromLTRB(18, 14, 18, 14),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  // Title and mood chip
                   Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Expanded(
                         child: Text(
                           workout.name,
-                          style: const TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                          ),
+                          style: theme.textTheme.titleLarge
+                              ?.copyWith(fontWeight: FontWeight.bold),
                         ),
                       ),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 8, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: moodModel.moodColor.withOpacity(0.2),
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: Text(
-                          workout.recommendedMood.toString().split('.').last,
-                          style: TextStyle(
-                            color: moodModel.moodColor,
-                            fontSize: 12,
-                          ),
-                        ),
+                      _MoodChip(
+                        moodType: workout.recommendedMood,
+                        color: moodModel.moodColor,
+                        isDark: Theme.of(context).brightness == Brightness.dark,
                       ),
                     ],
                   ),
-                  const SizedBox(height: 8),
-                  Text(
-                    workout.description,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      color: Colors.grey.shade600,
+                  const SizedBox(height: 6),
+                  // Description
+                  if (workout.description.isNotEmpty)
+                    Text(
+                      workout.description,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: colorScheme.onSurface.withOpacity(0.72),
+                        fontSize: 14,
+                      ),
                     ),
-                  ),
                   const SizedBox(height: 12),
+                  // Meta info row
                   Row(
                     children: [
-                      const Icon(
-                        Icons.timer,
-                        size: 16,
-                        color: Colors.grey,
+                      _MetaChip(
+                        icon: Icons.timer,
+                        label: '${workout.totalDurationMinutes} min',
+                        colorScheme: colorScheme,
                       ),
-                      const SizedBox(width: 4),
-                      Text(
-                        '${workout.totalDurationMinutes} min',
-                        style: const TextStyle(
-                          color: Colors.grey,
-                        ),
-                      ),
-                      const SizedBox(width: 16),
-                      const Icon(
-                        Icons.fitness_center,
-                        size: 16,
-                        color: Colors.grey,
-                      ),
-                      const SizedBox(width: 4),
-                      Text(
-                        '${workout.exercises.length} exercises',
-                        style: const TextStyle(
-                          color: Colors.grey,
-                        ),
+                      const SizedBox(width: 10),
+                      _MetaChip(
+                        icon: Icons.fitness_center,
+                        label: '${workout.exercises.length} exercises',
+                        colorScheme: colorScheme,
                       ),
                     ],
                   ),
@@ -332,6 +355,69 @@ class _WorkoutsScreenState extends State<WorkoutsScreen>
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+// Mood chip widget
+class _MoodChip extends StatelessWidget {
+  final MoodType moodType;
+  final Color color;
+  final bool isDark;
+  const _MoodChip(
+      {required this.moodType, required this.color, required this.isDark});
+
+  @override
+  Widget build(BuildContext context) {
+    String label = moodType.toString().split('.').last;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+      decoration: BoxDecoration(
+        color: color.withOpacity(isDark ? 0.22 : 0.16),
+        borderRadius: BorderRadius.circular(22),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          color: isDark ? Colors.white : color,
+          fontWeight: FontWeight.w600,
+          fontSize: 13,
+        ),
+      ),
+    );
+  }
+}
+
+// Meta info chip widget
+class _MetaChip extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final ColorScheme colorScheme;
+  const _MetaChip(
+      {required this.icon, required this.label, required this.colorScheme});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3),
+      margin: const EdgeInsets.only(right: 2),
+      decoration: BoxDecoration(
+        color: colorScheme.secondaryContainer,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        children: [
+          Icon(icon, size: 15, color: colorScheme.secondary),
+          const SizedBox(width: 3),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 13,
+              color: colorScheme.onSecondaryContainer,
+            ),
+          ),
+        ],
       ),
     );
   }

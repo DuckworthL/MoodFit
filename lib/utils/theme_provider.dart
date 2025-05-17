@@ -1,21 +1,41 @@
-// lib/utils/theme_provider.dart - Application theme management
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class ThemeProvider with ChangeNotifier {
   bool _isDarkMode = false;
-  final Color _primaryColor = const Color(0xFF6200EE);
-  final Color _accentColor = const Color(0xFF03DAC6);
+  String _accentColorName = 'purple'; // Default accent color
+
+  // Color palette options
+  final Map<String, Color> _primaryColors = {
+    'purple': const Color(0xFF6200EE),
+    'blue': const Color(0xFF2962FF),
+    'green': const Color(0xFF00C853),
+    'orange': const Color(0xFFFF6D00),
+    'pink': const Color(0xFFC2185B),
+  };
+
+  final Map<String, Color> _secondaryColors = {
+    'purple': const Color(0xFF03DAC6),
+    'blue': const Color(0xFF0091EA),
+    'green': const Color(0xFF64DD17),
+    'orange': const Color(0xFFFF9100),
+    'pink': const Color(0xFFFF4081),
+  };
 
   ThemeProvider() {
     _loadThemePreference();
   }
 
   bool get isDarkMode => _isDarkMode;
+  String get accentColorName => _accentColorName;
+  Color get primaryColor => _primaryColors[_accentColorName]!;
+  Color get secondaryColor => _secondaryColors[_accentColorName]!;
+  List<String> get availableColorThemes => _primaryColors.keys.toList();
 
   Future<void> _loadThemePreference() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     _isDarkMode = prefs.getBool('isDarkMode') ?? false;
+    _accentColorName = prefs.getString('accentColor') ?? 'purple';
     notifyListeners();
   }
 
@@ -23,6 +43,15 @@ class ThemeProvider with ChangeNotifier {
     _isDarkMode = !_isDarkMode;
     SharedPreferences prefs = await SharedPreferences.getInstance();
     prefs.setBool('isDarkMode', _isDarkMode);
+    notifyListeners();
+  }
+
+  Future<void> setAccentColor(String colorName) async {
+    if (!_primaryColors.containsKey(colorName)) return;
+
+    _accentColorName = colorName;
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    prefs.setString('accentColor', colorName);
     notifyListeners();
   }
 
@@ -34,10 +63,10 @@ class ThemeProvider with ChangeNotifier {
     return ThemeData(
       useMaterial3: true,
       brightness: Brightness.light,
-      primaryColor: _primaryColor,
+      primaryColor: primaryColor,
       colorScheme: ColorScheme.light(
-        primary: _primaryColor,
-        secondary: _accentColor,
+        primary: primaryColor,
+        secondary: secondaryColor,
         onPrimary: Colors.white,
         onSecondary: Colors.black,
       ),
@@ -63,13 +92,13 @@ class ThemeProvider with ChangeNotifier {
         ),
       ),
       appBarTheme: AppBarTheme(
-        backgroundColor: _primaryColor,
+        backgroundColor: primaryColor,
         foregroundColor: Colors.white,
         elevation: 0,
       ),
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
-          backgroundColor: _primaryColor,
+          backgroundColor: primaryColor,
           foregroundColor: Colors.white,
           textStyle: const TextStyle(
             fontFamily: 'Poppins',
@@ -95,20 +124,31 @@ class ThemeProvider with ChangeNotifier {
         fillColor: Colors.white,
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: _primaryColor.withOpacity(0.2)),
+          borderSide: BorderSide(color: primaryColor.withOpacity(0.2)),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: _primaryColor.withOpacity(0.2)),
+          borderSide: BorderSide(color: primaryColor.withOpacity(0.2)),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: _primaryColor),
+          borderSide: BorderSide(color: primaryColor),
         ),
         contentPadding: const EdgeInsets.symmetric(
           horizontal: 16,
           vertical: 16,
         ),
+      ),
+      // Improved bottom navigation bar styling for better visibility in light mode
+      bottomNavigationBarTheme: BottomNavigationBarThemeData(
+        backgroundColor: Colors.white,
+        selectedItemColor: primaryColor,
+        unselectedItemColor: Colors.grey.shade700, // Darker for better contrast
+        type: BottomNavigationBarType.fixed,
+        elevation: 16, // Increased elevation for better shadow
+        selectedLabelStyle: const TextStyle(fontWeight: FontWeight.bold),
+        selectedIconTheme: IconThemeData(size: 28, color: primaryColor),
+        unselectedIconTheme: const IconThemeData(size: 24),
       ),
     );
   }
@@ -117,10 +157,10 @@ class ThemeProvider with ChangeNotifier {
     return ThemeData(
       useMaterial3: true,
       brightness: Brightness.dark,
-      primaryColor: _primaryColor,
+      primaryColor: primaryColor,
       colorScheme: ColorScheme.dark(
-        primary: _primaryColor,
-        secondary: _accentColor,
+        primary: primaryColor,
+        secondary: secondaryColor,
         onPrimary: Colors.white,
         onSecondary: Colors.black,
         surface: const Color(0xFF1E1E1E),
@@ -149,13 +189,13 @@ class ThemeProvider with ChangeNotifier {
         ),
       ),
       appBarTheme: const AppBarTheme(
-        backgroundColor: Colors.black,
+        backgroundColor: Color(0xFF1A1A1A),
         foregroundColor: Colors.white,
         elevation: 0,
       ),
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
-          backgroundColor: _primaryColor,
+          backgroundColor: primaryColor,
           foregroundColor: Colors.white,
           textStyle: const TextStyle(
             fontFamily: 'Poppins',
@@ -181,20 +221,33 @@ class ThemeProvider with ChangeNotifier {
         fillColor: const Color(0xFF2A2A2A),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: _primaryColor.withOpacity(0.2)),
+          borderSide: BorderSide(color: primaryColor.withOpacity(0.2)),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: _primaryColor.withOpacity(0.2)),
+          borderSide: BorderSide(color: primaryColor.withOpacity(0.2)),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: _primaryColor),
+          borderSide: BorderSide(color: primaryColor),
         ),
         contentPadding: const EdgeInsets.symmetric(
           horizontal: 16,
           vertical: 16,
         ),
+      ),
+      // Improved bottom navigation bar styling for better visibility in dark mode
+      bottomNavigationBarTheme: BottomNavigationBarThemeData(
+        backgroundColor:
+            const Color(0xFF2A2A2A), // Lighter than background for contrast
+        selectedItemColor: primaryColor,
+        unselectedItemColor:
+            Colors.grey.shade300, // Light gray for better visibility
+        type: BottomNavigationBarType.fixed,
+        elevation: 16, // Increased elevation for better shadow
+        selectedLabelStyle: const TextStyle(fontWeight: FontWeight.bold),
+        selectedIconTheme: IconThemeData(size: 28, color: primaryColor),
+        unselectedIconTheme: const IconThemeData(size: 24),
       ),
     );
   }
