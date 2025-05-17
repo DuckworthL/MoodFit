@@ -48,6 +48,9 @@ class WorkoutModel {
   final int totalDurationMinutes;
   final String backgroundImage;
   final String? createdBy; // userId or 'system' for pre-defined workouts
+  final String type; // Added to fix missing getter
+  final int difficulty; // Added to fix missing getter
+  final String imageAsset; // Added to fix missing getter
 
   WorkoutModel({
     required this.id,
@@ -59,6 +62,9 @@ class WorkoutModel {
     required this.totalDurationMinutes,
     required this.backgroundImage,
     this.createdBy,
+    this.type = 'general', // Default value
+    this.difficulty = 5, // Default value (1-10)
+    this.imageAsset = 'assets/backgrounds/workout_bg.jpg', // Default value
   });
 
   factory WorkoutModel.fromFirestore(DocumentSnapshot doc) {
@@ -85,12 +91,17 @@ class WorkoutModel {
       backgroundImage:
           data['backgroundImage'] ?? 'assets/backgrounds/workout_bg.jpg',
       createdBy: data['createdBy'],
+      type: data['type'] ?? 'general', // Parse from data
+      difficulty: data['difficulty'] ?? 5, // Parse from data
+      imageAsset: data['imageAsset'] ??
+          'assets/backgrounds/workout_bg.jpg', // Parse from data
     );
   }
 
-  get durationMinutes => null;
+  int get durationMinutes =>
+      totalDurationMinutes; // Changed to properly return value
 
-  String? get userId => null;
+  String? get userId => createdBy; // Fixed to return the correct value
 
   Map<String, dynamic> toJson() {
     return {
@@ -102,6 +113,9 @@ class WorkoutModel {
       'totalDurationMinutes': totalDurationMinutes,
       'backgroundImage': backgroundImage,
       'createdBy': createdBy,
+      'type': type, // Added to JSON
+      'difficulty': difficulty, // Added to JSON
+      'imageAsset': imageAsset, // Added to JSON
     };
   }
 
