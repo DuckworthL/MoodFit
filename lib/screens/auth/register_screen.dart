@@ -1,7 +1,11 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:moodfit/providers/auth_provider.dart';
 import 'package:moodfit/screens/auth/login_screen.dart';
+import 'package:moodfit/utils/design_system.dart';
 import 'package:moodfit/utils/signup_handler.dart';
+import 'package:moodfit/widgets/mood_fit_button.dart';
+import 'package:moodfit/widgets/mood_fit_text_field.dart';
 import 'package:provider/provider.dart';
 import '../../utils/toast_util.dart';
 import 'package:moodfit/widgets/slider_verification.dart';
@@ -13,7 +17,8 @@ class RegisterScreen extends StatefulWidget {
   State<RegisterScreen> createState() => _RegisterScreenState();
 }
 
-class _RegisterScreenState extends State<RegisterScreen> {
+class _RegisterScreenState extends State<RegisterScreen>
+    with SingleTickerProviderStateMixin {
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
   final _emailController = TextEditingController();
@@ -23,6 +28,26 @@ class _RegisterScreenState extends State<RegisterScreen> {
   bool _isConfirmPasswordVisible = false;
   bool _acceptTerms = false;
   bool _isHumanVerified = false;
+  late AnimationController _animController;
+  late Animation<double> _fadeInAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _animController = AnimationController(
+      duration: const Duration(milliseconds: 1500),
+      vsync: this,
+    );
+
+    _fadeInAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(
+        parent: _animController,
+        curve: const Interval(0.2, 1.0, curve: Curves.easeOut),
+      ),
+    );
+
+    _animController.forward();
+  }
 
   @override
   void dispose() {
@@ -30,6 +55,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     _emailController.dispose();
     _passwordController.dispose();
     _confirmPasswordController.dispose();
+    _animController.dispose();
     super.dispose();
   }
 
@@ -83,230 +109,336 @@ class _RegisterScreenState extends State<RegisterScreen> {
   @override
   Widget build(BuildContext context) {
     final authProvider = Provider.of<AuthProvider>(context);
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final isDark = theme.brightness == Brightness.dark;
 
     return Scaffold(
-      body: Container(
-        decoration: const BoxDecoration(
-          image: DecorationImage(
-            image: AssetImage('assets/backgrounds/registration_bg.jpg'),
-            fit: BoxFit.cover,
-            colorFilter: ColorFilter.mode(
-              Colors.black54,
-              BlendMode.darken,
+      body: Stack(
+        children: [
+          // Background
+          Container(
+            decoration: const BoxDecoration(
+              image: DecorationImage(
+                image: AssetImage('assets/backgrounds/registration_bg.jpg'),
+                fit: BoxFit.cover,
+              ),
+            ),
+            child: BackdropFilter(
+              filter: ImageFilter.blur(sigmaX: 2, sigmaY: 2),
+              child: Container(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [
+                      Colors.black.withOpacity(0.5),
+                      Colors.black.withOpacity(0.7),
+                    ],
+                  ),
+                ),
+              ),
             ),
           ),
-        ),
-        child: SafeArea(
-          child: Center(
-            child: SingleChildScrollView(
-              child: Padding(
-                padding: const EdgeInsets.all(24.0),
-                child: Card(
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  elevation: 8,
-                  color: Colors.white.withOpacity(0.9),
-                  child: Padding(
-                    padding: const EdgeInsets.all(24.0),
-                    child: Form(
-                      key: _formKey,
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Image.asset(
-                            'assets/images/moodfit_logo.png',
-                            height: 80,
+
+          // Content
+          SafeArea(
+            child: Center(
+              child: SingleChildScrollView(
+                child: Padding(
+                  padding: const EdgeInsets.all(24.0),
+                  child: FadeTransition(
+                    opacity: _fadeInAnimation,
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: isDark
+                            ? colorScheme.surface.withOpacity(0.9)
+                            : Colors.white.withOpacity(0.9),
+                        borderRadius: BorderRadius.circular(24),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.2),
+                            blurRadius: 20,
+                            offset: const Offset(0, 10),
                           ),
-                          const SizedBox(height: 16),
-                          const Text(
-                            'Create Account',
-                            style: TextStyle(
-                              fontSize: 24,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.black87,
-                            ),
-                          ),
-                          const SizedBox(height: 24),
-                          TextFormField(
-                            controller: _nameController,
-                            decoration: const InputDecoration(
-                              labelText: 'Full Name',
-                              prefixIcon: Icon(Icons.person),
-                            ),
-                            validator: (value) {
-                              if (value == null || value.isEmpty) {
-                                return 'Please enter your name';
-                              }
-                              return null;
-                            },
-                          ),
-                          const SizedBox(height: 16),
-                          TextFormField(
-                            controller: _emailController,
-                            keyboardType: TextInputType.emailAddress,
-                            decoration: const InputDecoration(
-                              labelText: 'Email',
-                              prefixIcon: Icon(Icons.email),
-                            ),
-                            validator: (value) {
-                              if (value == null || value.isEmpty) {
-                                return 'Please enter your email';
-                              }
-                              if (!value.contains('@')) {
-                                return 'Please enter a valid email';
-                              }
-                              return null;
-                            },
-                          ),
-                          const SizedBox(height: 16),
-                          TextFormField(
-                            controller: _passwordController,
-                            obscureText: !_isPasswordVisible,
-                            decoration: InputDecoration(
-                              labelText: 'Password',
-                              prefixIcon: const Icon(Icons.lock),
-                              suffixIcon: IconButton(
-                                icon: Icon(
-                                  _isPasswordVisible
-                                      ? Icons.visibility_off
-                                      : Icons.visibility,
-                                ),
-                                onPressed: () {
-                                  setState(() {
-                                    _isPasswordVisible = !_isPasswordVisible;
-                                  });
-                                },
-                              ),
-                            ),
-                            validator: (value) {
-                              if (value == null || value.isEmpty) {
-                                return 'Please enter a password';
-                              }
-                              if (value.length < 6) {
-                                return 'Password must be at least 6 characters';
-                              }
-                              return null;
-                            },
-                          ),
-                          const SizedBox(height: 16),
-                          TextFormField(
-                            controller: _confirmPasswordController,
-                            obscureText: !_isConfirmPasswordVisible,
-                            decoration: InputDecoration(
-                              labelText: 'Confirm Password',
-                              prefixIcon: const Icon(Icons.lock),
-                              suffixIcon: IconButton(
-                                icon: Icon(
-                                  _isConfirmPasswordVisible
-                                      ? Icons.visibility_off
-                                      : Icons.visibility,
-                                ),
-                                onPressed: () {
-                                  setState(() {
-                                    _isConfirmPasswordVisible =
-                                        !_isConfirmPasswordVisible;
-                                  });
-                                },
-                              ),
-                            ),
-                            validator: (value) {
-                              if (value == null || value.isEmpty) {
-                                return 'Please confirm your password';
-                              }
-                              if (value != _passwordController.text) {
-                                return 'Passwords do not match';
-                              }
-                              return null;
-                            },
-                          ),
-                          const SizedBox(height: 16),
-                          Row(
+                        ],
+                        border: isDark
+                            ? Border.all(color: Colors.white.withOpacity(0.1))
+                            : null,
+                      ),
+                      child: Padding(
+                        padding: const EdgeInsets.all(24.0),
+                        child: Form(
+                          key: _formKey,
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
                             children: [
-                              Checkbox(
-                                value: _acceptTerms,
-                                onChanged: (value) {
+                              // Logo
+                              Container(
+                                padding: const EdgeInsets.all(12),
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  color: colorScheme.primary.withOpacity(0.1),
+                                ),
+                                child: Image.asset(
+                                  'assets/images/moodfit_logo.png',
+                                  height: 80,
+                                ),
+                              ),
+                              const SizedBox(height: 24),
+
+                              // Header Text
+                              Text(
+                                'Create Account',
+                                style: MoodFitDesignSystem.heading2(context),
+                              ),
+                              const SizedBox(height: 8),
+                              Text(
+                                'Join MoodFit to start your fitness journey',
+                                style:
+                                    MoodFitDesignSystem.body2(context).copyWith(
+                                  color: colorScheme.onSurface.withOpacity(0.7),
+                                ),
+                                textAlign: TextAlign.center,
+                              ),
+                              const SizedBox(height: 32),
+
+                              // Name Field
+                              MoodFitTextField(
+                                controller: _nameController,
+                                labelText: 'Full Name',
+                                hintText: 'Enter your full name',
+                                prefixIcon: Icons.person_outline,
+                                validator: (value) {
+                                  if (value == null || value.isEmpty) {
+                                    return 'Please enter your name';
+                                  }
+                                  return null;
+                                },
+                              ),
+                              const SizedBox(height: 24),
+
+                              // Email Field
+                              MoodFitTextField(
+                                controller: _emailController,
+                                labelText: 'Email',
+                                hintText: 'Enter your email',
+                                prefixIcon: Icons.email_outlined,
+                                keyboardType: TextInputType.emailAddress,
+                                validator: (value) {
+                                  if (value == null || value.isEmpty) {
+                                    return 'Please enter your email';
+                                  }
+                                  if (!value.contains('@')) {
+                                    return 'Please enter a valid email';
+                                  }
+                                  return null;
+                                },
+                              ),
+                              const SizedBox(height: 24),
+
+                              // Password Field
+                              MoodFitTextField(
+                                controller: _passwordController,
+                                labelText: 'Password',
+                                hintText: 'Enter your password',
+                                prefixIcon: Icons.lock_outline,
+                                obscureText: !_isPasswordVisible,
+                                suffixIcon: IconButton(
+                                  icon: Icon(
+                                    _isPasswordVisible
+                                        ? Icons.visibility_off_outlined
+                                        : Icons.visibility_outlined,
+                                    color: colorScheme.primary,
+                                  ),
+                                  onPressed: () {
+                                    setState(() {
+                                      _isPasswordVisible = !_isPasswordVisible;
+                                    });
+                                  },
+                                ),
+                                validator: (value) {
+                                  if (value == null || value.isEmpty) {
+                                    return 'Please enter a password';
+                                  }
+                                  if (value.length < 6) {
+                                    return 'Password must be at least 6 characters';
+                                  }
+                                  return null;
+                                },
+                              ),
+                              const SizedBox(height: 24),
+
+                              // Confirm Password Field
+                              MoodFitTextField(
+                                controller: _confirmPasswordController,
+                                labelText: 'Confirm Password',
+                                hintText: 'Confirm your password',
+                                prefixIcon: Icons.lock_outline,
+                                obscureText: !_isConfirmPasswordVisible,
+                                suffixIcon: IconButton(
+                                  icon: Icon(
+                                    _isConfirmPasswordVisible
+                                        ? Icons.visibility_off_outlined
+                                        : Icons.visibility_outlined,
+                                    color: colorScheme.primary,
+                                  ),
+                                  onPressed: () {
+                                    setState(() {
+                                      _isConfirmPasswordVisible =
+                                          !_isConfirmPasswordVisible;
+                                    });
+                                  },
+                                ),
+                                validator: (value) {
+                                  if (value == null || value.isEmpty) {
+                                    return 'Please confirm your password';
+                                  }
+                                  if (value != _passwordController.text) {
+                                    return 'Passwords do not match';
+                                  }
+                                  return null;
+                                },
+                              ),
+                              const SizedBox(height: 24),
+
+                              // Terms and Conditions
+                              Row(
+                                children: [
+                                  SizedBox(
+                                    height: 24,
+                                    width: 24,
+                                    child: Checkbox(
+                                      value: _acceptTerms,
+                                      activeColor: colorScheme.primary,
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(4),
+                                      ),
+                                      onChanged: (value) {
+                                        setState(() {
+                                          _acceptTerms = value ?? false;
+                                        });
+                                      },
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: RichText(
+                                      text: TextSpan(
+                                        text: 'I accept the ',
+                                        style:
+                                            MoodFitDesignSystem.body2(context),
+                                        children: [
+                                          TextSpan(
+                                            text: 'Terms and Conditions',
+                                            style: TextStyle(
+                                              fontWeight: FontWeight.bold,
+                                              color: colorScheme.primary,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 24),
+
+                              // Verification Slider
+                              SliderVerification(
+                                onVerified: (verified) {
                                   setState(() {
-                                    _acceptTerms = value ?? false;
+                                    _isHumanVerified = verified;
                                   });
                                 },
                               ),
-                              Expanded(
-                                child: RichText(
-                                  text: const TextSpan(
-                                    text: 'I accept the ',
-                                    style: TextStyle(color: Colors.black87),
+                              const SizedBox(height: 24),
+
+                              // Error Message
+                              if (authProvider.error != null)
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 16,
+                                    vertical: 12,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: Theme.of(context)
+                                        .colorScheme
+                                        .error
+                                        .withOpacity(0.1),
+                                    borderRadius: BorderRadius.circular(12),
+                                    border: Border.all(
+                                      color: Theme.of(context)
+                                          .colorScheme
+                                          .error
+                                          .withOpacity(0.3),
+                                    ),
+                                  ),
+                                  child: Row(
                                     children: [
-                                      TextSpan(
-                                        text: 'Terms and Conditions',
-                                        style: TextStyle(
-                                          color: Colors.blue,
-                                          fontWeight: FontWeight.bold,
+                                      Icon(
+                                        Icons.error_outline,
+                                        color:
+                                            Theme.of(context).colorScheme.error,
+                                        size: 20,
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Expanded(
+                                        child: Text(
+                                          authProvider.error!,
+                                          style:
+                                              MoodFitDesignSystem.body2(context)
+                                                  .copyWith(
+                                            color: Theme.of(context)
+                                                .colorScheme
+                                                .error,
+                                          ),
                                         ),
                                       ),
                                     ],
                                   ),
                                 ),
+                              const SizedBox(height: 24),
+
+                              // Sign Up Button
+                              MoodFitButton(
+                                label: 'Sign Up',
+                                onPressed: _handleRegister,
+                                isLoading: authProvider.isLoading,
+                                isFullWidth: true,
+                                isDisabled: !_isHumanVerified || !_acceptTerms,
+                                icon: Icons.person_add_outlined,
                               ),
-                            ],
-                          ),
-                          const SizedBox(height: 16),
-                          // SliderVerification widget for human check
-                          SliderVerification(
-                            onVerified: (verified) {
-                              setState(() {
-                                _isHumanVerified = verified;
-                              });
-                            },
-                          ),
-                          const SizedBox(height: 16),
-                          if (authProvider.error != null)
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 12,
-                                vertical: 8,
-                              ),
-                              decoration: BoxDecoration(
-                                color: Colors.red.shade100,
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              child: Text(
-                                authProvider.error!,
-                                style: TextStyle(color: Colors.red.shade800),
-                              ),
-                            ),
-                          const SizedBox(height: 16),
-                          SizedBox(
-                            width: double.infinity,
-                            child: ElevatedButton(
-                              onPressed: authProvider.isLoading
-                                  ? null
-                                  : _handleRegister,
-                              child: authProvider.isLoading
-                                  ? const SizedBox(
-                                      height: 20,
-                                      width: 20,
-                                      child: CircularProgressIndicator(
-                                        strokeWidth: 2,
+
+                              const SizedBox(height: 24),
+
+                              // Already have an account
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Text(
+                                    "Already have an account?",
+                                    style: MoodFitDesignSystem.body2(context),
+                                  ),
+                                  TextButton(
+                                    onPressed: () {
+                                      Navigator.of(context).pop();
+                                    },
+                                    style: MoodFitDesignSystem.textButtonStyle(
+                                        context),
+                                    child: Text(
+                                      'Sign In',
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        color: colorScheme.primary,
                                       ),
-                                    )
-                                  : const Text('Sign Up'),
-                            ),
-                          ),
-                          const SizedBox(height: 16),
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              const Text("Already have an account?"),
-                              TextButton(
-                                onPressed: () {
-                                  Navigator.of(context).pop();
-                                },
-                                child: const Text('Sign In'),
+                                    ),
+                                  ),
+                                ],
                               ),
                             ],
                           ),
-                        ],
+                        ),
                       ),
                     ),
                   ),
@@ -314,7 +446,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
               ),
             ),
           ),
-        ),
+        ],
       ),
     );
   }
